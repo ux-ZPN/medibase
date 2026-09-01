@@ -1,2 +1,3 @@
-// Base type definitions placeholder for MediBase platform
+export * from "./database";
+
 export type SystemStatus = "operational" | "maintenance" | "initialization";

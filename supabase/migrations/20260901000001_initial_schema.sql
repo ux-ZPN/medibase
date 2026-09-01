@@ -1,5 +1,5 @@
 -- ==============================================================================
--- MediBase PostgreSQL Database Schema
+-- MediBase PostgreSQL Database Schema & Initial Migration
 -- ==============================================================================
 
 -- Enable UUID extension if not already enabled
