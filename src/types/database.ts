@@ -73,6 +73,10 @@ export interface Database {
           date_of_birth: string | null;
           gender: string | null;
           blood_group: string | null;
+          occupation: string | null;
+          height_cm: number | null;
+          weight_kg: number | null;
+          is_demo: boolean;
           emergency_contact_name: string | null;
           emergency_contact_phone: string | null;
           allergies: string[];
@@ -90,6 +94,10 @@ export interface Database {
           date_of_birth?: string | null;
           gender?: string | null;
           blood_group?: string | null;
+          occupation?: string | null;
+          height_cm?: number | null;
+          weight_kg?: number | null;
+          is_demo?: boolean;
           emergency_contact_name?: string | null;
           emergency_contact_phone?: string | null;
           allergies?: string[];
@@ -107,11 +115,220 @@ export interface Database {
           date_of_birth?: string | null;
           gender?: string | null;
           blood_group?: string | null;
+          occupation?: string | null;
+          height_cm?: number | null;
+          weight_kg?: number | null;
+          is_demo?: boolean;
           emergency_contact_name?: string | null;
           emergency_contact_phone?: string | null;
           allergies?: string[];
           chronic_conditions?: string[];
           updated_at?: string;
+        };
+      };
+      emergency_contacts: {
+        Row: {
+          id: string;
+          patient_id: string;
+          emergency_contact_name: string;
+          emergency_contact_relationship: string;
+          emergency_contact_phone: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          patient_id: string;
+          emergency_contact_name: string;
+          emergency_contact_relationship: string;
+          emergency_contact_phone: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          patient_id?: string;
+          emergency_contact_name?: string;
+          emergency_contact_relationship?: string;
+          emergency_contact_phone?: string;
+          updated_at?: string;
+        };
+      };
+      medical_profiles: {
+        Row: {
+          id: string;
+          patient_id: string;
+          chief_complaint: string | null;
+          medical_history: string | null;
+          past_medical_history: string | null;
+          family_history: string | null;
+          social_history: string | null;
+          initial_assessment: string | null;
+          treatment_plan: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          patient_id: string;
+          chief_complaint?: string | null;
+          medical_history?: string | null;
+          past_medical_history?: string | null;
+          family_history?: string | null;
+          social_history?: string | null;
+          initial_assessment?: string | null;
+          treatment_plan?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          patient_id?: string;
+          chief_complaint?: string | null;
+          medical_history?: string | null;
+          past_medical_history?: string | null;
+          family_history?: string | null;
+          social_history?: string | null;
+          initial_assessment?: string | null;
+          treatment_plan?: string | null;
+          updated_at?: string;
+        };
+      };
+      vital_signs: {
+        Row: {
+          id: string;
+          patient_id: string;
+          visit_id: string | null;
+          temperature_c: number | null;
+          pulse_bpm: number | null;
+          respiratory_rate: number | null;
+          blood_pressure_systolic: number | null;
+          blood_pressure_diastolic: number | null;
+          spo2: number | null;
+          recorded_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          patient_id: string;
+          visit_id?: string | null;
+          temperature_c?: number | null;
+          pulse_bpm?: number | null;
+          respiratory_rate?: number | null;
+          blood_pressure_systolic?: number | null;
+          blood_pressure_diastolic?: number | null;
+          spo2?: number | null;
+          recorded_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          patient_id?: string;
+          visit_id?: string | null;
+          temperature_c?: number | null;
+          pulse_bpm?: number | null;
+          respiratory_rate?: number | null;
+          blood_pressure_systolic?: number | null;
+          blood_pressure_diastolic?: number | null;
+          spo2?: number | null;
+        };
+      };
+      allergies: {
+        Row: {
+          id: string;
+          patient_id: string;
+          allergen: string;
+          reaction: string;
+          severity: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          patient_id: string;
+          allergen: string;
+          reaction: string;
+          severity?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          patient_id?: string;
+          allergen?: string;
+          reaction?: string;
+          severity?: string | null;
+        };
+      };
+      medications: {
+        Row: {
+          id: string;
+          patient_id: string;
+          visit_id: string | null;
+          medication_name: string;
+          dosage: string | null;
+          frequency: string | null;
+          route: string | null;
+          status: string;
+          recorded_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          patient_id: string;
+          visit_id?: string | null;
+          medication_name: string;
+          dosage?: string | null;
+          frequency?: string | null;
+          route?: string | null;
+          status?: string;
+          recorded_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          patient_id?: string;
+          visit_id?: string | null;
+          medication_name?: string;
+          dosage?: string | null;
+          frequency?: string | null;
+          route?: string | null;
+          status?: string;
+        };
+      };
+      medical_tests: {
+        Row: {
+          id: string;
+          patient_id: string;
+          visit_id: string | null;
+          test_name: string;
+          status: string;
+          result: string | null;
+          notes: string | null;
+          ordered_at: string;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          patient_id: string;
+          visit_id?: string | null;
+          test_name: string;
+          status?: string;
+          result?: string | null;
+          notes?: string | null;
+          ordered_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          patient_id?: string;
+          visit_id?: string | null;
+          test_name?: string;
+          status?: string;
+          result?: string | null;
+          notes?: string | null;
+          ordered_at?: string;
+          completed_at?: string | null;
         };
       };
       hospitals: {
@@ -201,11 +418,16 @@ export interface Database {
         Row: {
           id: string;
           patient_id: string;
-          hospital_id: string;
+          hospital_id: string | null;
           staff_id: string | null;
+          facility_name: string;
+          department: string;
           visit_date: string;
           visit_type: VisitType;
           chief_complaint: string;
+          medical_history: string | null;
+          assessment: string | null;
+          plan: string | null;
           diagnosis: string | null;
           clinical_notes: string | null;
           prescription: string | null;
@@ -215,11 +437,16 @@ export interface Database {
         Insert: {
           id?: string;
           patient_id: string;
-          hospital_id: string;
+          hospital_id?: string | null;
           staff_id?: string | null;
+          facility_name?: string;
+          department?: string;
           visit_date?: string;
           visit_type?: VisitType;
           chief_complaint: string;
+          medical_history?: string | null;
+          assessment?: string | null;
+          plan?: string | null;
           diagnosis?: string | null;
           clinical_notes?: string | null;
           prescription?: string | null;
@@ -229,11 +456,16 @@ export interface Database {
         Update: {
           id?: string;
           patient_id?: string;
-          hospital_id?: string;
+          hospital_id?: string | null;
           staff_id?: string | null;
+          facility_name?: string;
+          department?: string;
           visit_date?: string;
           visit_type?: VisitType;
           chief_complaint?: string;
+          medical_history?: string | null;
+          assessment?: string | null;
+          plan?: string | null;
           diagnosis?: string | null;
           clinical_notes?: string | null;
           prescription?: string | null;

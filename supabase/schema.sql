@@ -1,5 +1,6 @@
 -- ==============================================================================
 -- MediBase PostgreSQL Database Schema
+-- Comprehensive longitudinal healthcare record platform
 -- ==============================================================================
 
 -- Enable UUID extension if not already enabled
@@ -34,7 +35,7 @@ DO $$ BEGIN
 END $$;
 
 -- ==============================================================================
--- 2. HELPER FUNCTION: auto-update updated_at timestamp
+-- 2. HELPER FUNCTIONS
 -- ==============================================================================
 
 CREATE OR REPLACE FUNCTION handle_updated_at()
@@ -45,8 +46,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION generate_unique_medibase_id()
+RETURNS TEXT AS $$
+DECLARE
+    new_id TEXT;
+    is_unique BOOLEAN := false;
+BEGIN
+    WHILE NOT is_unique LOOP
+        new_id := 'MB-' || LPAD(FLOOR(RANDOM() * 900000 + 100000)::TEXT, 6, '0');
+        IF NOT EXISTS (SELECT 1 FROM patients WHERE medibase_id = new_id) THEN
+            is_unique := true;
+        END IF;
+    END LOOP;
+    RETURN new_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- ==============================================================================
--- 3. CORE TABLES
+-- 3. CORE IDENTITY & DEMOGRAPHICS TABLES
 -- ==============================================================================
 
 -- 3.1 Profiles (Extends Supabase auth.users)
@@ -72,6 +89,10 @@ CREATE TABLE IF NOT EXISTS patients (
     date_of_birth DATE,
     gender TEXT,
     blood_group TEXT,
+    occupation TEXT,
+    height_cm NUMERIC(5, 1),
+    weight_kg NUMERIC(5, 1),
+    is_demo BOOLEAN NOT NULL DEFAULT false,
     emergency_contact_name TEXT,
     emergency_contact_phone TEXT,
     allergies TEXT[] NOT NULL DEFAULT '{}',
@@ -80,7 +101,18 @@ CREATE TABLE IF NOT EXISTS patients (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3.3 Hospitals
+-- 3.3 Emergency Contacts (Part 2)
+CREATE TABLE IF NOT EXISTS emergency_contacts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    emergency_contact_name TEXT NOT NULL,
+    emergency_contact_relationship TEXT NOT NULL,
+    emergency_contact_phone TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 3.4 Hospitals
 CREATE TABLE IF NOT EXISTS hospitals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -96,7 +128,7 @@ CREATE TABLE IF NOT EXISTS hospitals (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3.4 Hospital Staff
+-- 3.5 Hospital Staff
 CREATE TABLE IF NOT EXISTS hospital_staff (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id UUID NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
@@ -111,15 +143,39 @@ CREATE TABLE IF NOT EXISTS hospital_staff (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3.5 Visits (Clinical Encounters)
+-- ==============================================================================
+-- 4. CLINICAL & LONGITUDINAL MEDICAL TABLES
+-- ==============================================================================
+
+-- 4.1 Medical Profiles (Longitudinal Summary per Patient)
+CREATE TABLE IF NOT EXISTS medical_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
+    chief_complaint TEXT,
+    medical_history TEXT,
+    past_medical_history TEXT,
+    family_history TEXT,
+    social_history TEXT,
+    initial_assessment TEXT,
+    treatment_plan TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 4.2 Visits (Clinical Encounters)
 CREATE TABLE IF NOT EXISTS visits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
-    hospital_id UUID NOT NULL REFERENCES hospitals(id) ON DELETE RESTRICT,
+    hospital_id UUID REFERENCES hospitals(id) ON DELETE RESTRICT,
     staff_id UUID REFERENCES hospital_staff(id) ON DELETE SET NULL,
+    facility_name TEXT NOT NULL DEFAULT 'City General Hospital',
+    department TEXT NOT NULL DEFAULT 'Outpatient Clinic',
     visit_date TIMESTAMPTZ NOT NULL DEFAULT now(),
     visit_type visit_type NOT NULL DEFAULT 'outpatient',
     chief_complaint TEXT NOT NULL,
+    medical_history TEXT,
+    assessment TEXT,
+    plan TEXT,
     diagnosis TEXT,
     clinical_notes TEXT,
     prescription TEXT,
@@ -127,7 +183,60 @@ CREATE TABLE IF NOT EXISTS visits (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3.6 Medical Reports (Metadata pointing to Supabase Storage)
+-- 4.3 Vital Signs (Part 4)
+CREATE TABLE IF NOT EXISTS vital_signs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    visit_id UUID REFERENCES visits(id) ON DELETE SET NULL,
+    temperature_c NUMERIC(4, 1),
+    pulse_bpm INTEGER,
+    respiratory_rate INTEGER,
+    blood_pressure_systolic INTEGER,
+    blood_pressure_diastolic INTEGER,
+    spo2 NUMERIC(4, 1),
+    recorded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 4.4 Allergies (Part 5)
+CREATE TABLE IF NOT EXISTS allergies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    allergen TEXT NOT NULL,
+    reaction TEXT NOT NULL,
+    severity TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 4.5 Medications (Part 6)
+CREATE TABLE IF NOT EXISTS medications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    visit_id UUID REFERENCES visits(id) ON DELETE SET NULL,
+    medication_name TEXT NOT NULL,
+    dosage TEXT,
+    frequency TEXT,
+    route TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    recorded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 4.6 Medical Tests (Part 7)
+CREATE TABLE IF NOT EXISTS medical_tests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    visit_id UUID REFERENCES visits(id) ON DELETE SET NULL,
+    test_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ordered',
+    result TEXT,
+    notes TEXT,
+    ordered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 4.7 Medical Reports (Storage attachments)
 CREATE TABLE IF NOT EXISTS medical_reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     visit_id UUID NOT NULL REFERENCES visits(id) ON DELETE CASCADE,
@@ -142,7 +251,11 @@ CREATE TABLE IF NOT EXISTS medical_reports (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3.7 Access Requests
+-- ==============================================================================
+-- 5. ACCESS CONTROL & AUDIT TABLES
+-- ==============================================================================
+
+-- 5.1 Access Requests
 CREATE TABLE IF NOT EXISTS access_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
@@ -156,7 +269,7 @@ CREATE TABLE IF NOT EXISTS access_requests (
     responded_at TIMESTAMPTZ
 );
 
--- 3.8 Access Grants (Active Patient Permissions)
+-- 5.2 Access Grants
 CREATE TABLE IF NOT EXISTS access_grants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
@@ -172,7 +285,7 @@ CREATE TABLE IF NOT EXISTS access_grants (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3.9 Emergency Access (Break-Glass Override)
+-- 5.3 Emergency Access
 CREATE TABLE IF NOT EXISTS emergency_access (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
@@ -186,7 +299,7 @@ CREATE TABLE IF NOT EXISTS emergency_access (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3.10 Audit Logs (Immutable Append-Only Audit Trail)
+-- 5.4 Audit Logs
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     actor_profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -202,7 +315,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3.11 Notifications
+-- 5.5 Notifications
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     recipient_profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -215,7 +328,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 -- ==============================================================================
--- 4. TRIGGERS FOR UPDATED_AT
+-- 6. TRIGGERS
 -- ==============================================================================
 
 DO $$ BEGIN
@@ -228,6 +341,18 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_patients_updated_at') THEN
         CREATE TRIGGER trg_patients_updated_at
             BEFORE UPDATE ON patients
+            FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_emergency_contacts_updated_at') THEN
+        CREATE TRIGGER trg_emergency_contacts_updated_at
+            BEFORE UPDATE ON emergency_contacts
+            FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_medical_profiles_updated_at') THEN
+        CREATE TRIGGER trg_medical_profiles_updated_at
+            BEFORE UPDATE ON medical_profiles
             FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
     END IF;
 
@@ -257,84 +382,32 @@ DO $$ BEGIN
 END $$;
 
 -- ==============================================================================
--- 5. PERFORMANCE & LOOKUP INDEXES
+-- 7. PERFORMANCE & LOOKUP INDEXES
 -- ==============================================================================
 
--- Patient lookups
 CREATE INDEX IF NOT EXISTS idx_patients_medibase_id ON patients(medibase_id);
-CREATE INDEX IF NOT EXISTS idx_patients_qr_code_token ON patients(qr_code_token);
-CREATE INDEX IF NOT EXISTS idx_patients_profile_id ON patients(profile_id);
+CREATE INDEX IF NOT EXISTS idx_patients_qr_token ON patients(qr_code_token);
 CREATE INDEX IF NOT EXISTS idx_patients_aadhaar_hash ON patients(aadhaar_hash);
-
--- Staff lookups
-CREATE INDEX IF NOT EXISTS idx_hospital_staff_profile_id ON hospital_staff(profile_id);
-CREATE INDEX IF NOT EXISTS idx_hospital_staff_hospital_id ON hospital_staff(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_hospital_staff_aadhaar_hash ON hospital_staff(aadhaar_hash);
-
--- Visits & Clinical data
-CREATE INDEX IF NOT EXISTS idx_visits_patient_id ON visits(patient_id, visit_date DESC);
+CREATE INDEX IF NOT EXISTS idx_emergency_contacts_patient_id ON emergency_contacts(patient_id);
+CREATE INDEX IF NOT EXISTS idx_medical_profiles_patient_id ON medical_profiles(patient_id);
+CREATE INDEX IF NOT EXISTS idx_visits_patient_id ON visits(patient_id);
 CREATE INDEX IF NOT EXISTS idx_visits_hospital_id ON visits(hospital_id);
-CREATE INDEX IF NOT EXISTS idx_visits_staff_id ON visits(staff_id);
-
--- Medical Reports
-CREATE INDEX IF NOT EXISTS idx_medical_reports_visit_id ON medical_reports(visit_id);
-CREATE INDEX IF NOT EXISTS idx_medical_reports_patient_id ON medical_reports(patient_id);
-
--- Access management
-CREATE INDEX IF NOT EXISTS idx_access_requests_patient_status ON access_requests(patient_id, status);
-CREATE INDEX IF NOT EXISTS idx_access_requests_staff ON access_requests(requested_by_staff_id);
-CREATE INDEX IF NOT EXISTS idx_access_grants_lookup ON access_grants(patient_id, is_active, valid_until);
-CREATE INDEX IF NOT EXISTS idx_access_grants_facility ON access_grants(hospital_id, staff_id);
-
--- Emergency Break-Glass
-CREATE INDEX IF NOT EXISTS idx_emergency_access_lookup ON emergency_access(patient_id, access_ended_at);
-CREATE INDEX IF NOT EXISTS idx_emergency_access_staff ON emergency_access(staff_id);
-
--- Audit trail & Notifications
-CREATE INDEX IF NOT EXISTS idx_audit_logs_patient_timeline ON audit_logs(patient_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_profile_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_notifications_recipient_unread ON notifications(recipient_profile_id, is_read, created_at DESC);
-
--- ==============================================================================
--- 6. MEDIBASE ID GENERATOR FUNCTION
--- ==============================================================================
-
-CREATE OR REPLACE FUNCTION generate_unique_medibase_id()
-RETURNS TEXT AS $$
-DECLARE
-    new_id TEXT;
-    done BOOLEAN;
-    attempts INT := 0;
-BEGIN
-    done := false;
-    WHILE NOT done LOOP
-        attempts := attempts + 1;
-        new_id := 'MB-' || lpad(floor(random() * 900000 + 100000)::text, 6, '0');
-        IF NOT EXISTS (SELECT 1 FROM patients WHERE medibase_id = new_id) THEN
-            done := true;
-        END IF;
-        IF attempts > 50 THEN
-            new_id := 'MB-' || to_char(now(), 'YYMMDD') || lpad(floor(random() * 9000 + 1000)::text, 4, '0');
-            done := true;
-        END IF;
-    END LOOP;
-    RETURN new_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- ==============================================================================
--- 7. SEED DEFAULT VERIFIED HOSPITALS
--- ==============================================================================
-
-INSERT INTO hospitals (id, name, license_number, address, city, state, postal_code, phone_number, email, is_verified)
-VALUES
-    ('a0000000-0000-0000-0000-000000000001', 'City General Hospital', 'HOSP-CGH-2024-001', '124 Medical Center Blvd', 'Metro City', 'State', '110001', '+91 11 2345 6789', 'contact@citygeneral.hosp', true),
-    ('a0000000-0000-0000-0000-000000000002', 'Metro Health Institute', 'HOSP-MHI-2024-002', '88 Healthcare Avenue', 'Metro City', 'State', '110002', '+91 11 8765 4321', 'admin@metrohealth.org', true),
-    ('a0000000-0000-0000-0000-000000000003', 'St. Mary''s Hospital', 'HOSP-SMH-2024-003', '45 Cathedral Road', 'Metro City', 'State', '110003', '+91 11 3456 7890', 'info@stmaryshospital.org', true),
-    ('a0000000-0000-0000-0000-000000000004', 'Apex Super Specialty Hospital', 'HOSP-ASH-2024-004', '10 Innovation Parkway', 'Metro City', 'State', '110004', '+91 11 4567 8901', 'support@apexhospital.org', true)
-ON CONFLICT (license_number) DO UPDATE
-SET name = EXCLUDED.name,
-    is_verified = EXCLUDED.is_verified;
+CREATE INDEX IF NOT EXISTS idx_vital_signs_patient_id ON vital_signs(patient_id);
+CREATE INDEX IF NOT EXISTS idx_vital_signs_visit_id ON vital_signs(visit_id);
+CREATE INDEX IF NOT EXISTS idx_allergies_patient_id ON allergies(patient_id);
+CREATE INDEX IF NOT EXISTS idx_medications_patient_id ON medications(patient_id);
+CREATE INDEX IF NOT EXISTS idx_medications_visit_id ON medications(visit_id);
+CREATE INDEX IF NOT EXISTS idx_medical_tests_patient_id ON medical_tests(patient_id);
+CREATE INDEX IF NOT EXISTS idx_medical_tests_visit_id ON medical_tests(visit_id);
+CREATE INDEX IF NOT EXISTS idx_reports_patient_id ON medical_reports(patient_id);
+CREATE INDEX IF NOT EXISTS idx_reports_visit_id ON medical_reports(visit_id);
+CREATE INDEX IF NOT EXISTS idx_access_requests_patient_id ON access_requests(patient_id);
+CREATE INDEX IF NOT EXISTS idx_access_requests_status ON access_requests(status);
+CREATE INDEX IF NOT EXISTS idx_access_grants_patient_id ON access_grants(patient_id);
+CREATE INDEX IF NOT EXISTS idx_access_grants_active ON access_grants(is_active);
+CREATE INDEX IF NOT EXISTS idx_emergency_access_patient ON emergency_access(patient_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_patient_id ON audit_logs(patient_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications(recipient_profile_id);
 
 -- ==============================================================================
 -- 8. ROW LEVEL SECURITY (RLS) POLICIES
@@ -342,9 +415,15 @@ SET name = EXCLUDED.name,
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE emergency_contacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE hospitals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE hospital_staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE medical_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE visits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vital_signs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE allergies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE medications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE medical_tests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE medical_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE access_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE access_grants ENABLE ROW LEVEL SECURITY;
@@ -352,96 +431,249 @@ ALTER TABLE emergency_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
--- Profiles RLS
-DROP POLICY IF EXISTS "profiles_select_own" ON profiles;
-CREATE POLICY "profiles_select_own" ON profiles
-    FOR SELECT USING (auth.uid() = id);
+-- 8.1 Profiles Policies
+DROP POLICY IF EXISTS "Public profiles are viewable by authenticated users" ON profiles;
+CREATE POLICY "Public profiles are viewable by authenticated users"
+    ON profiles FOR SELECT
+    TO authenticated
+    USING (true);
 
-DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
-CREATE POLICY "profiles_insert_own" ON profiles
-    FOR INSERT WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+CREATE POLICY "Users can update their own profile"
+    ON profiles FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = id);
 
-DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
-CREATE POLICY "profiles_update_own" ON profiles
-    FOR UPDATE USING (auth.uid() = id);
+-- 8.2 Patients Policies
+DROP POLICY IF EXISTS "Patients can view their own record" ON patients;
+CREATE POLICY "Patients can view their own record"
+    ON patients FOR SELECT
+    TO authenticated
+    USING (profile_id = auth.uid());
 
-DROP POLICY IF EXISTS "profiles_staff_lookup" ON profiles;
-CREATE POLICY "profiles_staff_lookup" ON profiles
-    FOR SELECT USING (
+DROP POLICY IF EXISTS "Staff can view patient records" ON patients;
+CREATE POLICY "Staff can view patient records"
+    ON patients FOR SELECT
+    TO authenticated
+    USING (
         EXISTS (
-            SELECT 1 FROM hospital_staff
-            WHERE hospital_staff.profile_id = auth.uid()
+            SELECT 1 FROM hospital_staff hs
+            WHERE hs.profile_id = auth.uid()
         )
     );
 
--- Patients RLS
-DROP POLICY IF EXISTS "patients_select_own" ON patients;
-CREATE POLICY "patients_select_own" ON patients
-    FOR SELECT USING (profile_id = auth.uid());
+DROP POLICY IF EXISTS "Patients can update their own record" ON patients;
+CREATE POLICY "Patients can update their own record"
+    ON patients FOR UPDATE
+    TO authenticated
+    USING (profile_id = auth.uid());
 
-DROP POLICY IF EXISTS "patients_insert_own" ON patients;
-CREATE POLICY "patients_insert_own" ON patients
-    FOR INSERT WITH CHECK (profile_id = auth.uid());
+-- 8.3 Hospitals Policies
+DROP POLICY IF EXISTS "Hospitals are viewable by authenticated users" ON hospitals;
+CREATE POLICY "Hospitals are viewable by authenticated users"
+    ON hospitals FOR SELECT
+    TO authenticated
+    USING (true);
 
-DROP POLICY IF EXISTS "patients_update_own" ON patients;
-CREATE POLICY "patients_update_own" ON patients
-    FOR UPDATE USING (profile_id = auth.uid());
+-- 8.4 Hospital Staff Policies
+DROP POLICY IF EXISTS "Staff profiles are viewable by authenticated users" ON hospital_staff;
+CREATE POLICY "Staff profiles are viewable by authenticated users"
+    ON hospital_staff FOR SELECT
+    TO authenticated
+    USING (true);
 
-DROP POLICY IF EXISTS "patients_staff_select" ON patients;
-CREATE POLICY "patients_staff_select" ON patients
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM hospital_staff
-            WHERE hospital_staff.profile_id = auth.uid()
-        )
+-- 8.5 Emergency Contacts Policies
+DROP POLICY IF EXISTS "Patients can view their emergency contacts" ON emergency_contacts;
+CREATE POLICY "Patients can view their emergency contacts"
+    ON emergency_contacts FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view emergency contacts" ON emergency_contacts;
+CREATE POLICY "Staff can view emergency contacts"
+    ON emergency_contacts FOR SELECT
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.6 Medical Profiles Policies
+DROP POLICY IF EXISTS "Patients can view their medical profile" ON medical_profiles;
+CREATE POLICY "Patients can view their medical profile"
+    ON medical_profiles FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view medical profiles" ON medical_profiles;
+CREATE POLICY "Staff can view medical profiles"
+    ON medical_profiles FOR SELECT
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.7 Visits Policies
+DROP POLICY IF EXISTS "Patients can view their visits" ON visits;
+CREATE POLICY "Patients can view their visits"
+    ON visits FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view visits" ON visits;
+CREATE POLICY "Staff can view visits"
+    ON visits FOR SELECT
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can insert visits" ON visits;
+CREATE POLICY "Staff can insert visits"
+    ON visits FOR INSERT
+    TO authenticated
+    WITH CHECK (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.8 Vital Signs Policies
+DROP POLICY IF EXISTS "Patients can view their vital signs" ON vital_signs;
+CREATE POLICY "Patients can view their vital signs"
+    ON vital_signs FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view vital signs" ON vital_signs;
+CREATE POLICY "Staff can view vital signs"
+    ON vital_signs FOR SELECT
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can record vital signs" ON vital_signs;
+CREATE POLICY "Staff can record vital signs"
+    ON vital_signs FOR INSERT
+    TO authenticated
+    WITH CHECK (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.9 Allergies Policies
+DROP POLICY IF EXISTS "Patients can view their allergies" ON allergies;
+CREATE POLICY "Patients can view their allergies"
+    ON allergies FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view allergies" ON allergies;
+CREATE POLICY "Staff can view allergies"
+    ON allergies FOR SELECT
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.10 Medications Policies
+DROP POLICY IF EXISTS "Patients can view their medications" ON medications;
+CREATE POLICY "Patients can view their medications"
+    ON medications FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view medications" ON medications;
+CREATE POLICY "Staff can view medications"
+    ON medications FOR SELECT
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.11 Medical Tests Policies
+DROP POLICY IF EXISTS "Patients can view their medical tests" ON medical_tests;
+CREATE POLICY "Patients can view their medical tests"
+    ON medical_tests FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view medical tests" ON medical_tests;
+CREATE POLICY "Staff can view medical tests"
+    ON medical_tests FOR SELECT
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.12 Medical Reports Policies
+DROP POLICY IF EXISTS "Patients can view their reports" ON medical_reports;
+CREATE POLICY "Patients can view their reports"
+    ON medical_reports FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view reports" ON medical_reports;
+CREATE POLICY "Staff can view reports"
+    ON medical_reports FOR SELECT
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can upload reports" ON medical_reports;
+CREATE POLICY "Staff can upload reports"
+    ON medical_reports FOR INSERT
+    TO authenticated
+    WITH CHECK (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.13 Access Requests Policies
+DROP POLICY IF EXISTS "Patients can view requests for them" ON access_requests;
+CREATE POLICY "Patients can view requests for them"
+    ON access_requests FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Patients can respond to requests" ON access_requests;
+CREATE POLICY "Patients can respond to requests"
+    ON access_requests FOR UPDATE
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view and create access requests" ON access_requests;
+CREATE POLICY "Staff can view and create access requests"
+    ON access_requests FOR ALL
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.14 Access Grants Policies
+DROP POLICY IF EXISTS "Patients can view and revoke their grants" ON access_grants;
+CREATE POLICY "Patients can view and revoke their grants"
+    ON access_grants FOR ALL
+    TO authenticated
+    USING (granted_by_patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view active grants" ON access_grants;
+CREATE POLICY "Staff can view active grants"
+    ON access_grants FOR SELECT
+    TO authenticated
+    USING (is_active = true AND valid_until > now());
+
+-- 8.15 Emergency Access Policies
+DROP POLICY IF EXISTS "Staff can initiate emergency access" ON emergency_access;
+CREATE POLICY "Staff can initiate emergency access"
+    ON emergency_access FOR INSERT
+    TO authenticated
+    WITH CHECK (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Patients can view emergency access events" ON emergency_access;
+CREATE POLICY "Patients can view emergency access events"
+    ON emergency_access FOR SELECT
+    TO authenticated
+    USING (patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Staff can view active emergency access" ON emergency_access;
+CREATE POLICY "Staff can view active emergency access"
+    ON emergency_access FOR SELECT
+    TO authenticated
+    USING (EXISTS (SELECT 1 FROM hospital_staff hs WHERE hs.profile_id = auth.uid()));
+
+-- 8.16 Audit Logs Policies (Append Only)
+DROP POLICY IF EXISTS "Audit logs are append-only" ON audit_logs;
+CREATE POLICY "Audit logs are append-only"
+    ON audit_logs FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Users can view audit logs involving them" ON audit_logs;
+CREATE POLICY "Users can view audit logs involving them"
+    ON audit_logs FOR SELECT
+    TO authenticated
+    USING (
+        actor_profile_id = auth.uid()
+        OR patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid())
     );
 
--- Hospitals RLS
-DROP POLICY IF EXISTS "hospitals_select_all" ON hospitals;
-CREATE POLICY "hospitals_select_all" ON hospitals
-    FOR SELECT USING (true);
-
--- Hospital Staff RLS
-DROP POLICY IF EXISTS "staff_select_own" ON hospital_staff;
-CREATE POLICY "staff_select_own" ON hospital_staff
-    FOR SELECT USING (profile_id = auth.uid());
-
-DROP POLICY IF EXISTS "staff_insert_own" ON hospital_staff;
-CREATE POLICY "staff_insert_own" ON hospital_staff
-    FOR INSERT WITH CHECK (profile_id = auth.uid());
-
-DROP POLICY IF EXISTS "staff_update_own" ON hospital_staff;
-CREATE POLICY "staff_update_own" ON hospital_staff
-    FOR UPDATE USING (profile_id = auth.uid());
-
-DROP POLICY IF EXISTS "staff_select_peers" ON hospital_staff;
-CREATE POLICY "staff_select_peers" ON hospital_staff
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM hospital_staff peers
-            WHERE peers.profile_id = auth.uid()
-            AND peers.hospital_id = hospital_staff.hospital_id
-        )
-    );
-
--- Notifications RLS
-DROP POLICY IF EXISTS "notifications_select_own" ON notifications;
-CREATE POLICY "notifications_select_own" ON notifications
-    FOR SELECT USING (recipient_profile_id = auth.uid());
-
-DROP POLICY IF EXISTS "notifications_update_own" ON notifications;
-CREATE POLICY "notifications_update_own" ON notifications
-    FOR UPDATE USING (recipient_profile_id = auth.uid());
-
--- Audit Logs RLS
-DROP POLICY IF EXISTS "audit_logs_select_own" ON audit_logs;
-CREATE POLICY "audit_logs_select_own" ON audit_logs
-    FOR SELECT USING (
-        actor_profile_id = auth.uid() OR
-        patient_id IN (SELECT id FROM patients WHERE profile_id = auth.uid())
-    );
-
-DROP POLICY IF EXISTS "audit_logs_insert_authenticated" ON audit_logs;
-CREATE POLICY "audit_logs_insert_authenticated" ON audit_logs
-    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-
+-- 8.17 Notifications Policies
+DROP POLICY IF EXISTS "Users can view and manage their notifications" ON notifications;
+CREATE POLICY "Users can view and manage their notifications"
+    ON notifications FOR ALL
+    TO authenticated
+    USING (recipient_profile_id = auth.uid());

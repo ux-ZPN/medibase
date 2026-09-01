@@ -14,6 +14,9 @@ export interface UserProfile {
     qr_code_token: string;
     aadhaar_last4?: string | null;
     blood_group?: string | null;
+    occupation?: string | null;
+    height_cm?: number | null;
+    weight_kg?: number | null;
     allergies?: string[];
     chronic_conditions?: string[];
     date_of_birth?: string | null;
@@ -139,7 +142,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   if (profile.role === "patient") {
     let { data: patient } = await supabase
       .from("patients")
-      .select("id, medibase_id, qr_code_token, aadhaar_last4, blood_group, allergies, chronic_conditions, date_of_birth, gender")
+      .select("id, medibase_id, qr_code_token, aadhaar_last4, blood_group, occupation, height_cm, weight_kg, allergies, chronic_conditions, date_of_birth, gender")
       .eq("profile_id", profile.id)
       .single();
 

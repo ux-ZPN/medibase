@@ -1,0 +1,353 @@
+<!doctype html>
+<!-- Medibase full-page recreation: semantic HTML only. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <!--typography and Icon links -->
+   
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.1/css/all.css" integrity="sha512-x9WwyMYBnlXMNQ6kQ/Lyzu1NqIhLQKL5Oq6xByfXuRj7s9CskyCbLv/1IjqzJmXwFXWr0ov6jBV7Qbc0hh9nHg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="medibase.css" />
+
+    <title>Medibase</title>
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <!-- ==================== NAVBAR / HEADER ==================== -->
+    <header class="site-header">
+      <div class="nav-shell">
+        <!-- Brand -->
+        <a class="brand" href="#top" aria-label="Medibase home">
+          <span class="brand-name">Medi Base</span>
+        </a>
+
+        <!-- CSS-only mobile menu toggle -->
+        <input
+          class="menu-toggle"
+          type="checkbox"
+          id="menu-toggle"
+          aria-label="Toggle navigation"
+        />
+        <label
+          class="menu-button"
+          for="menu-toggle"
+          aria-label="Toggle navigation"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </label>
+
+        <!-- Navigation links -->
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a class="nav-link is-active" href="#about">About us</a>
+          <a class="nav-link" href="#Ourmission">Our Mission</a>
+          <a class="nav-link" href="#why-medibase">Why Medibase</a>
+          <a class="nav-link" href="#workflow">WorkFlow</a>
+          <a class="nav-link" href="#how-it-works">How it Works</a>
+          <a class="nav-link" href="features.html">Features</a>
+        </nav>
+
+        <!-- Header call to action -->
+        <div class="nav-actions">
+          <a class="button button-primary" href="#get-started">Get started</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== MAIN PAGE CONTENT ==================== -->
+    <main id="main-content">
+      <!-- ==================== HERO SECTION ==================== -->
+      <section class="hero section-shell" id="top" aria-labelledby="hero-title">
+        <div class="hero-copy" id="about">
+          <h1 id="hero-title">
+            Unified Medical<br />
+            History.<br />
+            <span>Instantly Accessible.</span>
+          </h1>
+
+          <p class="body-copy">
+            Medi Base bridges the gap in healthcare data. Provide immediate,<br>
+            secure access to comprehensive paitent histories via QR code,<br>
+            empowering faster and safer clinical decisions.
+          </p>
+
+          <!-- Hero buttons -->
+          <div class="hero-actions" id="get-started">
+            <a class="button button-primary" href="#how-it-works"
+              >Get started</a
+            >
+            <a class="button button-secondary" href="#how-it-works"
+              ><i class="fa-solid fa-play"></i>   See how it works</a
+            >
+          </div>
+        </div>
+
+        <!-- Reserved hero image/container area -->
+        <div
+          class="image-frame hero-image"
+          aria-label="Reserved hero image area"
+        >
+        <img src = "banner-1.jpg">
+      </div>
+      </section>
+
+      <!-- ==================== OUR MISSION SECTION ==================== -->
+      <section
+        class="connected section-shell" style="margin-left: 30px;padding-left:30px;"
+        id="Ourmission"
+        aria-labelledby="connected-title"
+      >
+        <div class="section-copy">
+          <p class="eyebrow">OUR MISSON</p>
+          <h2 id="connected-title">Empowering care through connected data.</h2>
+          <p class="body-copy">
+           we believe that vital medical information shouldn't be trapped in silos.<br>
+           Medi Base was founded by healthcare professionals who experienced<br>
+           firsthand the risks of treating paients without a complete medical history .<br><br>
+          
+            Our platform is designed to be the secure bridge between disparate EHR
+            systems, giving patients control over their data and providers the context 
+            they need to deliver exceptional care .
+          </p>
+        </div>
+
+        <!-- Supporting image containers -->
+        <div class="connected-images">
+          <div
+            class="image-frame small-image image-one"
+            aria-label="Reserved supporting image area"
+          >
+          <img src="small-section1.jpg">
+        </div>
+          <div
+            class="image-frame small-image image-two"
+            aria-label="Reserved supporting image area"
+          >
+          <img src ="small-section2.jpg">
+        </div>
+        </div>
+      </section>
+
+      <!-- ==================== FRAGMENTED CARE SECTION ==================== -->
+      <section
+        class="cost section-shell"
+        id="why-medibase"
+        aria-labelledby="cost-title"
+      >
+        <p class="eyebrow center" style="color:red">THE CHALLENGE</p>
+        <h2 class="center" id="cost-title">The High Cost of Fragmented Care</h2>
+        <p class="center section-lead">
+         When medical records are scattered across different providers,patient safety is<br>
+         compromised and valuable time is lost
+        </p>
+
+        <!-- Problem cards -->
+        <div class="card-grid cost-grid">
+          <article class="info-card tint-pink">
+            <span class="card-icon" >
+              <i class="fa-solid fa-triangle-exclamation danger"></i>
+            </span>
+            <h3>Adverse Events</h3>
+            <p>Missing alleregy or medication data can<br>
+              lead to dangerous drug interactions<br>
+               during emergency care. 
+            </p>
+          </article>
+
+          <article class="info-card tint-gray">
+            <span class="card-icon" style="font-size:2rem;">
+              <i class="fa-regular fa-alarm-clock"></i>
+            </span>
+            <h3>Wasted Time</h3>
+            <p>Clinicians spend hours tracking down<br>
+            faxes and records from previous<br>
+            providers instead of treatig paitents
+          </p>
+          </article>
+
+          <article class="info-card tint-gray">
+            <span class="card-icon" style="font-size:2rem;">
+              <i class="fa-solid fa-book"></i>
+            </span>
+            <h3>Redundant Testing</h3>
+            <p>Without Access to recent lab results or <br>
+            imaging,expensive and invasive tests are often unncessarily repeated
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ==================== HOW TO USE / BENEFITS SECTION ==================== -->
+      <section
+        class="better section-shell"
+        id="how-it-works"
+        aria-labelledby="better-title"
+      >
+        <p class="eyebrow center">A BETTER WAY</p>
+        <h2 class="center" id="better-title">
+          How to Use &amp; Why It's Better
+        </h2>
+
+        <!-- Numbered use steps -->
+        <div class="card-grid use-grid">
+          <article class="step-card">
+            <span class="step-number" style="font-size: 1.5rem;">1</span>
+            <h3>Scan QR</h3>
+            <p>Paitent presents their secure Medi Base <br>
+              QR code upon arrival at the clinic or<br>
+              hospital.</p>
+          </article>
+
+          <article class="step-card">
+            <span class="step-number" style="font-size: 2rem;">2</span>
+            <h3>Access History</h3>
+            <p>Providers instantly view comprehensive<br>
+              records,allergies, and current<br>
+              medications
+            </p>
+          </article>
+
+          <article class="step-card">
+            <span class="step-number" style="font-size: 2rem;">3</span>
+            <h3>Update Records</h3>
+            <p>New diagnoses and presecriptions are <br>
+            synced seamlessly back to the unified<br>
+            paitent profile
+            </p>
+          </article>
+        </div>
+
+        <!-- Benefit summaries -->
+        <div class="benefit-grid">
+          <article>
+            <span class="benefit-icon">
+              <i class="fa-solid fa-lock "></i>
+            </span>
+            <h3>Upcompromising Security</h3>
+            <p>Enterprise-grade encryption and strict
+            HIPAA compliance ensure paitent data is
+            always protected and Accessible only to 
+            authorized providers
+          </p>
+          </article>
+
+          <article>
+            <span class="benefit-icon">
+              <i class="fa-solid fa-bolt-lightning"></i>
+            </span>
+            <h3>Lightning Speed</h3>
+            <p>Eliminate wait times for faxes and complex
+              prtal integerations.Get the critical data you
+              need in seconds,not hours.</p>
+          </article>
+
+          <article>
+            <span class="benefit-icon">
+              <i class="fa-regular fa-calendar-check"></i>
+            </span>
+            <h3>Absolute Accuracy</h3>
+            <p>Make clinical decisions based on a 
+              complete , unified history,signficantly
+              reducing the risk of errors and redudant testing
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <!-- ==================== WORKFLOW SECTION ==================== -->
+    <section class="workflow section-shell" id="workflow" aria-labelledby="workflow-title">
+      <div class="workflow-header">
+        <h2 id="workflow-title">How MediBase Works</h2>
+        <p>A seamless flow from arrival to documentation, designed for modern clinical workflows.</p>
+      </div>
+
+      <div class="workflow-steps" aria-label="How MediBase works">
+        <div class="workflow-step">
+          <span class="workflow-number">1</span>
+          <div class="workflow-copy">
+            <h3>Patient Arrival</h3>
+            <p>Patients Medibase ID or QR code.</p>
+          </div>
+        </div>
+
+        <div class="workflow-step">
+          <span class="workflow-number">2</span>
+          <div class="workflow-copy">
+            <h3>Authorization</h3>
+            <p>Provider requests access, patient approves.</p>
+          </div>
+        </div>
+
+        <div class="workflow-step">
+          <span class="workflow-number">3</span>
+          <div class="workflow-copy">
+            <h3>Review Timeline</h3>
+            <p>Provider views unified medical history.</p>
+          </div>
+        </div>
+
+        <div class="workflow-step">
+          <span class="workflow-number">4</span>
+          <div class="workflow-copy">
+            <h3>Documentation</h3>
+            <p>New visit securely appended.</p>
+          </div>
+        </div>
+
+        <div class="workflow-step">
+          <span class="workflow-number">5</span>
+          <div class="workflow-copy">
+            <h3>Audit &amp; Log</h3>
+            <p>All actions recorded immutably.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="site-footer" id="partners">
+      <div class="footer-brand">
+        <span class="brand-name">Medibase</span>
+        <p>Connecting people, information, and care.</p>
+        <small>© Medibase</small>
+      </div>
+
+      <!-- Footer navigation columns -->
+      <div class="footer-links">
+        <div>
+          <strong>PlATFORM</strong>
+          <a href="#about">About us</a>
+          <a href="#problem">Problem</a>
+          <a href="#why-medibase">Solution</a>
+          <a href="#features">Features</a>
+        </div>
+
+        <div>
+          <strong>RESOURCES</strong>
+          <a href="#">Documentation</a>
+          <a href="#">Help Center</a>
+          <a href="#">API Reference</a>
+        </div>
+
+        <div>
+          <strong>LEGAL</strong>
+          <a href="#contact">Privacy Policy</a>
+          <a href="#contact">Terms of Service</a>
+          <a href="#contact">Security & HIPAA</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
