@@ -10,6 +10,8 @@ import {
   RefreshCw,
   ShieldCheck,
   XCircle,
+  FileUp,
+  Download,
 } from "lucide-react";
 
 interface AccessHistoryEvent {
@@ -22,6 +24,7 @@ interface AccessHistoryEvent {
   action_label: string;
   purpose: string;
   is_emergency: boolean;
+  access_type?: string;
 }
 
 export default function PatientAccessHistoryPage() {
@@ -29,28 +32,43 @@ export default function PatientAccessHistoryPage() {
   const [events, setEvents] = useState<AccessHistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadHistory() {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/patient/access-history");
-        const data = await res.json();
-        if (data.success && Array.isArray(data.events)) {
-          setEvents(data.events);
-        }
-      } catch (err) {
-        console.error("Failed to fetch access history:", err);
-      } finally {
-        setLoading(false);
+  const loadHistory = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/patient/access-history");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.events)) {
+        setEvents(data.events);
       }
+    } catch (err) {
+      console.error("Failed to fetch access history:", err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadHistory();
   }, []);
 
   const filteredEvents = events.filter((ev) => {
     if (filter === "all") return true;
-    if (filter === "viewed") return ev.action.toLowerCase().includes("view") || ev.action_label.toLowerCase().includes("view");
-    if (filter === "added") return ev.action.toLowerCase().includes("add") || ev.action.toLowerCase().includes("created") || ev.action.toLowerCase().includes("approved");
+    if (filter === "viewed") {
+      return (
+        ev.action.toLowerCase().includes("view") ||
+        ev.action.toLowerCase().includes("accessed") ||
+        ev.action_label.toLowerCase().includes("view") ||
+        ev.action_label.toLowerCase().includes("accessed")
+      );
+    }
+    if (filter === "added") {
+      return (
+        ev.action.toLowerCase().includes("add") ||
+        ev.action.toLowerCase().includes("created") ||
+        ev.action.toLowerCase().includes("approved") ||
+        ev.action.toLowerCase().includes("uploaded")
+      );
+    }
     if (filter === "emergency") return ev.is_emergency;
     return true;
   });
@@ -70,15 +88,7 @@ export default function PatientAccessHistoryPage() {
           </div>
 
           <button
-            onClick={() => {
-              setLoading(true);
-              fetch("/api/patient/access-history")
-                .then((r) => r.json())
-                .then((d) => {
-                  if (d.events) setEvents(d.events);
-                })
-                .finally(() => setLoading(false));
-            }}
+            onClick={loadHistory}
             className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
             title="Refresh access history"
           >
@@ -117,7 +127,7 @@ export default function PatientAccessHistoryPage() {
                 : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
             }`}
           >
-            Added / Approved
+            Added / Approved / Uploaded
           </button>
           <button
             onClick={() => setFilter("emergency")}
@@ -133,7 +143,7 @@ export default function PatientAccessHistoryPage() {
 
         {/* Loading State */}
         {loading && (
-          <div className="p-8 text-center bg-white border border-slate-200 rounded-xl">
+          <div className="p-8 text-center bg-white border border-slate-200 rounded-xl space-y-2">
             <RefreshCw className="w-6 h-6 animate-spin text-[#006699] mx-auto mb-2" />
             <p className="text-xs text-slate-500">Loading audit and access trail...</p>
           </div>
@@ -154,6 +164,8 @@ export default function PatientAccessHistoryPage() {
               const isEmergency = ev.is_emergency;
               const isApproval = ev.action.toLowerCase().includes("approved");
               const isDenied = ev.action.toLowerCase().includes("denied");
+              const isUpload = ev.action.toLowerCase().includes("upload");
+              const isDownload = ev.action.toLowerCase().includes("download");
 
               return (
                 <div key={ev.id} className="relative">
@@ -166,6 +178,8 @@ export default function PatientAccessHistoryPage() {
                         ? "bg-emerald-600"
                         : isDenied
                         ? "bg-rose-500"
+                        : isUpload
+                        ? "bg-sky-600"
                         : "border-2 border-[#006699] bg-white"
                     }`}
                   />
@@ -191,7 +205,13 @@ export default function PatientAccessHistoryPage() {
                               ? "bg-emerald-50 text-emerald-700"
                               : isDenied
                               ? "bg-rose-50 text-rose-700"
-                              : "bg-sky-50 text-[#006699]"
+                              : isUpload
+                              ? "bg-sky-50 text-[#006699]"
+                              : isDownload
+                              ? "bg-indigo-50 text-indigo-700"
+                              : ev.action.toLowerCase().includes("view")
+                              ? "bg-sky-50 text-[#006699]"
+                              : "bg-slate-100 text-slate-700"
                           }`}
                         >
                           {isEmergency ? (
@@ -200,6 +220,10 @@ export default function PatientAccessHistoryPage() {
                             <ShieldCheck className="w-5 h-5" />
                           ) : isDenied ? (
                             <XCircle className="w-5 h-5" />
+                          ) : isUpload ? (
+                            <FileUp className="w-5 h-5" />
+                          ) : isDownload ? (
+                            <Download className="w-5 h-5" />
                           ) : ev.action.toLowerCase().includes("view") ? (
                             <Eye className="w-5 h-5" />
                           ) : (
@@ -253,21 +277,20 @@ export default function PatientAccessHistoryPage() {
                       </div>
                     </div>
 
-                    <div
-                      className={`text-xs space-y-1 ${
-                        isEmergency ? "text-rose-950" : "text-slate-700"
-                      }`}
-                    >
-                      <p>
-                        <span className="font-semibold text-slate-900">Action:</span>{" "}
-                        {ev.action_label}
-                      </p>
-                      {ev.purpose && (
-                        <p>
-                          <span className="font-semibold text-slate-900">Purpose:</span>{" "}
-                          {ev.purpose}
-                        </p>
-                      )}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div>
+                        <span className="text-slate-400 font-medium">Action: </span>
+                        <span className="font-semibold text-slate-800">
+                          {ev.action_label}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-slate-400 font-medium">Context / Reason: </span>
+                        <span className="text-slate-600 italic">
+                          &ldquo;{ev.purpose}&rdquo;
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

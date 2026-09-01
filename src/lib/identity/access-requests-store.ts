@@ -35,12 +35,17 @@ export interface StoredAuditLog {
   timestamp: string;
   actor_name: string;
   actor_role: string;
+  hospital_id?: string;
   hospital_name: string;
   action: string;
   action_label: string;
   purpose: string;
   patient_id: string;
   is_emergency: boolean;
+  access_type?: "normal" | "emergency";
+  metadata?: Record<string, unknown>;
+  ip_address?: string;
+  device?: string;
 }
 
 export interface ClinicalEncounter {
@@ -143,12 +148,32 @@ if (!globalStore.__medibase_audit_logs) {
       timestamp: "31 Aug 2026, 10:42 AM",
       actor_name: "Dr. Rahul Sharma",
       actor_role: "Senior Physician",
+      hospital_id: "a0000000-0000-0000-0000-000000000001",
       hospital_name: "City General Hospital",
-      action: "Record Viewed",
+      action: "patient_record_accessed",
       action_label: "Viewed medical history",
       purpose: "Consultation",
       patient_id: "MB-100001",
       is_emergency: false,
+      access_type: "normal",
+      ip_address: "192.168.1.45",
+      device: "Hospital Terminal-01 (Chrome/Windows)",
+    },
+    {
+      id: "audit-seed-002",
+      timestamp: "31 Aug 2026, 11:30 AM",
+      actor_name: "Dr. Rahul Sharma",
+      actor_role: "Senior Physician",
+      hospital_id: "a0000000-0000-0000-0000-000000000001",
+      hospital_name: "City General Hospital",
+      action: "access_request_created",
+      action_label: "Access Request Initiated",
+      purpose: "Cardiac Follow-up Evaluation",
+      patient_id: "MB-100003",
+      is_emergency: false,
+      access_type: "normal",
+      ip_address: "192.168.1.45",
+      device: "Hospital Terminal-01 (Chrome/Windows)",
     },
   ];
 }
@@ -352,6 +377,30 @@ const runtimeAuditLogs = globalStore.__medibase_audit_logs!;
 const runtimeEncounters = globalStore.__medibase_clinical_encounters!;
 const runtimeMedicalReports = globalStore.__medibase_medical_reports!;
 
+export function recordAuditLog(entry: Omit<StoredAuditLog, "id" | "timestamp"> & { id?: string; timestamp?: string }): StoredAuditLog {
+  const log: StoredAuditLog = {
+    id: entry.id || `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    timestamp: entry.timestamp || new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }),
+    actor_name: entry.actor_name,
+    actor_role: entry.actor_role,
+    hospital_id: entry.hospital_id || "a0000000-0000-0000-0000-000000000001",
+    hospital_name: entry.hospital_name,
+    action: entry.action,
+    action_label: entry.action_label,
+    purpose: entry.purpose,
+    patient_id: entry.patient_id,
+    is_emergency: Boolean(entry.is_emergency),
+    access_type: entry.access_type || (entry.is_emergency ? "emergency" : "normal"),
+    metadata: entry.metadata,
+    ip_address: entry.ip_address || "192.168.1.45",
+    device: entry.device || "Hospital Terminal (Chrome/Secure)",
+  };
+
+  // Append-only
+  runtimeAuditLogs.unshift(log);
+  return log;
+}
+
 export function findPendingAccessRequest(
   patientId: string,
   staffId: string,
@@ -382,6 +431,20 @@ export function getAccessRequestById(id: string): StoredAccessRequest | undefine
 
 export function addAccessRequest(req: StoredAccessRequest): void {
   runtimeAccessRequests.unshift(req);
+
+  // Log in centralized audit log
+  recordAuditLog({
+    actor_name: req.doctor_name,
+    actor_role: req.doctor_role,
+    hospital_id: req.hospital_id,
+    hospital_name: req.hospital_name,
+    action: "access_request_created",
+    action_label: "Access Request Initiated",
+    purpose: req.purpose,
+    patient_id: req.patient_id,
+    is_emergency: false,
+    access_type: "normal",
+  });
 }
 
 export function approveAccessRequest(
@@ -407,6 +470,20 @@ export function approveAccessRequest(
       access_type: "view_only",
     };
     runtimeAccessGrants.unshift(newGrant);
+
+    recordAuditLog({
+      actor_name: "Rahul Sharma (Patient)",
+      actor_role: "Patient",
+      hospital_id: newGrant.hospital_id,
+      hospital_name: newGrant.hospital_name,
+      action: "access_request_approved",
+      action_label: "Patient Approved Access Request",
+      purpose: "Consultation & Record Access",
+      patient_id: callerPatientId,
+      is_emergency: false,
+      access_type: "normal",
+    });
+
     return { success: true, grant: newGrant };
   }
 
@@ -451,18 +528,18 @@ export function approveAccessRequest(
 
   runtimeAccessGrants.unshift(grant);
 
-  // Log in audit trail
-  runtimeAuditLogs.unshift({
-    id: `audit-${Date.now()}`,
-    timestamp: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }),
+  // Log in centralized audit trail
+  recordAuditLog({
     actor_name: req.doctor_name,
     actor_role: req.doctor_role,
+    hospital_id: req.hospital_id,
     hospital_name: req.hospital_name,
-    action: "Access Approved",
+    action: "access_request_approved",
     action_label: "Patient Approved Access Request",
     purpose: req.purpose,
     patient_id: req.patient_id,
     is_emergency: false,
+    access_type: "normal",
   });
 
   return { success: true, grant };
@@ -512,18 +589,18 @@ export function denyAccessRequest(
     }
   });
 
-  // Log in audit trail
-  runtimeAuditLogs.unshift({
-    id: `audit-${Date.now()}`,
-    timestamp: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }),
+  // Log in centralized audit trail
+  recordAuditLog({
     actor_name: req.doctor_name,
     actor_role: req.doctor_role,
+    hospital_id: req.hospital_id,
     hospital_name: req.hospital_name,
-    action: "Access Denied",
+    action: "access_request_denied",
     action_label: "Patient Denied Access Request",
     purpose: req.purpose,
     patient_id: req.patient_id,
     is_emergency: false,
+    access_type: "normal",
   });
 
   return { success: true };
@@ -564,6 +641,20 @@ export function checkClinicalAccess(
   if (grant) {
     return { authorized: true, grant };
   }
+
+  // Record unauthorized access attempt in audit log
+  recordAuditLog({
+    actor_name: "Staff Doctor",
+    actor_role: "Hospital Staff",
+    hospital_id: hospitalId || "a0000000-0000-0000-0000-000000000001",
+    hospital_name: "City General Hospital",
+    action: "unauthorized_access_attempt",
+    action_label: "Unauthorized Access Attempt Blocked",
+    purpose: "Clinical View (Missing Active Consent)",
+    patient_id: patientIdOrMedibaseId,
+    is_emergency: false,
+    access_type: "normal",
+  });
 
   return {
     authorized: false,
@@ -611,6 +702,47 @@ export function getPatientAccessHistory(patientId: string): StoredAuditLog[] {
   });
 }
 
+export function getStaffHospitalAuditLogs(
+  hospitalId: string,
+  filters?: { staffName?: string; patientId?: string; action?: string; accessType?: string }
+): StoredAuditLog[] {
+  return runtimeAuditLogs.filter((a) => {
+    // Scoped to staff hospital
+    const matchesHospital =
+      !hospitalId ||
+      !a.hospital_id ||
+      a.hospital_id === hospitalId ||
+      a.hospital_id === "a0000000-0000-0000-0000-000000000001";
+
+    if (!matchesHospital) return false;
+
+    if (filters?.staffName && filters.staffName !== "All Staff") {
+      if (!a.actor_name.toLowerCase().includes(filters.staffName.toLowerCase())) return false;
+    }
+
+    if (filters?.patientId) {
+      if (!a.patient_id.toLowerCase().includes(filters.patientId.toLowerCase())) return false;
+    }
+
+    if (filters?.action && filters.action !== "All Actions") {
+      if (!a.action.toLowerCase().includes(filters.action.toLowerCase()) && !a.action_label.toLowerCase().includes(filters.action.toLowerCase())) {
+        return false;
+      }
+    }
+
+    if (filters?.accessType && filters.accessType !== "All Types") {
+      if (filters.accessType.toLowerCase() === "emergency" && !a.is_emergency) return false;
+      if (filters.accessType.toLowerCase() === "normal" && a.is_emergency) return false;
+    }
+
+    return true;
+  });
+}
+
+export function getAuditLogById(auditId: string): StoredAuditLog | undefined {
+  return runtimeAuditLogs.find((a) => a.id === auditId);
+}
+
 export function getPatientEncounters(patientIdentifier: string): ClinicalEncounter[] {
   const targetIdx = extractPatientIndex(patientIdentifier) ?? 3;
   const list = runtimeEncounters[String(targetIdx)] || runtimeEncounters["3"] || [];
@@ -640,10 +772,8 @@ export function recordClinicalEncounter(
   // Add at TOP (newest first)
   runtimeEncounters[key].unshift(newEnc);
 
-  // Also add to audit logs
-  runtimeAuditLogs.unshift({
-    id: `audit-${Date.now()}`,
-    timestamp: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }),
+  // Centralized audit logging
+  recordAuditLog({
     actor_name: encounterData.doctor_name,
     actor_role: encounterData.doctor_role || "Doctor",
     hospital_name: encounterData.hospital_name,
@@ -652,6 +782,7 @@ export function recordClinicalEncounter(
     purpose: "Clinical Encounter Documentation",
     patient_id: patientIdentifier,
     is_emergency: false,
+    access_type: "normal",
   });
 
   return newEnc;
@@ -672,10 +803,8 @@ export function addMedicalReport(report: StoredMedicalReport): StoredMedicalRepo
     });
   }
 
-  // Log in audit trail
-  runtimeAuditLogs.unshift({
-    id: `audit-${Date.now()}`,
-    timestamp: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }),
+  // Centralized audit logging
+  recordAuditLog({
     actor_name: report.doctor_name,
     actor_role: "Doctor",
     hospital_name: report.hospital_name,
@@ -684,6 +813,7 @@ export function addMedicalReport(report: StoredMedicalReport): StoredMedicalRepo
     purpose: "Clinical Report Attachment",
     patient_id: report.patient_id,
     is_emergency: false,
+    access_type: "normal",
   });
 
   return report;
