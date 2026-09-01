@@ -55,6 +55,8 @@ export interface AccessRequestItem {
   requestedAt: string;
   expiresIn: string;
   status: "pending" | "approved" | "denied";
+  patientName?: string;
+  patientId?: string;
 }
 
 export interface AuditLogItem {
@@ -63,9 +65,24 @@ export interface AuditLogItem {
   actorName: string;
   actorRole: string;
   hospital: string;
-  action: "Record Viewed" | "Consent Approved" | "Visit Created" | "Report Downloaded" | "Consent Revoked";
+  action: "Record Viewed" | "Consent Approved" | "Visit Created" | "Report Downloaded" | "Consent Revoked" | "Emergency Override" | "Report Uploaded";
   resource: string;
   ipAddress: string;
+  patientName?: string;
+  patientId?: string;
+  details?: string;
+  integrityHash?: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type: "access_request" | "emergency_access_alert" | "record_updated" | "access_revoked";
+  timestamp: string;
+  isRead: boolean;
+  actionUrl?: string;
+  actionLabel?: string;
 }
 
 export const SAMPLE_PATIENT: PatientRecord = {
@@ -82,7 +99,7 @@ export const SAMPLE_PATIENT: PatientRecord = {
     relationship: "Spouse",
     phone: "+1 (555) 987-6543",
   },
-  allergies: ["Penicillin", "Sulfa Drugs"],
+  allergies: ["Penicillin (Anaphylaxis)", "Sulfa Drugs"],
   chronicConditions: ["Hypertension (Stage 1)", "Mild Asthma"],
   currentMedications: [
     {
@@ -193,6 +210,8 @@ export const SAMPLE_ACCESS_REQUESTS: AccessRequestItem[] = [
     requestedAt: "10 minutes ago",
     expiresIn: "5 minutes remaining",
     status: "pending",
+    patientName: "Johnathan Doe",
+    patientId: "MB-2026-89412",
   },
   {
     id: "req-02",
@@ -205,6 +224,8 @@ export const SAMPLE_ACCESS_REQUESTS: AccessRequestItem[] = [
     requestedAt: "2026-03-04 09:15 AM",
     expiresIn: "Completed",
     status: "approved",
+    patientName: "Johnathan Doe",
+    patientId: "MB-2026-89412",
   },
   {
     id: "req-03",
@@ -217,12 +238,28 @@ export const SAMPLE_ACCESS_REQUESTS: AccessRequestItem[] = [
     requestedAt: "2025-12-14 02:40 PM",
     expiresIn: "Expired",
     status: "denied",
+    patientName: "Johnathan Doe",
+    patientId: "MB-2026-89412",
   },
 ];
 
 export const SAMPLE_AUDIT_LOGS: AuditLogItem[] = [
   {
     id: "aud-01",
+    timestamp: "2026-09-01 11:30 AM",
+    actorName: "Dr. Sarah Jenkins",
+    actorRole: "Senior Cardiologist",
+    hospital: "Apollo Specialty Hospital",
+    action: "Emergency Override",
+    resource: "Break-Glass Protocol executed for Acute Cardiac Arrhythmia",
+    ipAddress: "192.168.10.42 (ED Clinical Terminal #4)",
+    patientName: "Johnathan Doe",
+    patientId: "MB-2026-89412",
+    details: "Unresponsive patient presenting to Emergency Department with chest pain. Break-Glass override authorized by Dr. Jenkins under Section 4.2 Emergency Protocol.",
+    integrityHash: "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+  },
+  {
+    id: "aud-02",
     timestamp: "2026-08-18 10:45 AM",
     actorName: "Dr. Sarah Jenkins",
     actorRole: "Senior Cardiologist",
@@ -230,9 +267,13 @@ export const SAMPLE_AUDIT_LOGS: AuditLogItem[] = [
     action: "Visit Created",
     resource: "Consultation encounter vis-101 & 2 diagnostic attachments",
     ipAddress: "192.168.10.42 (Internal Clinical Network)",
+    patientName: "Johnathan Doe",
+    patientId: "MB-2026-89412",
+    details: "Recorded outpatient visit and uploaded ECG & CMP reports.",
+    integrityHash: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   },
   {
-    id: "aud-02",
+    id: "aud-03",
     timestamp: "2026-08-18 10:32 AM",
     actorName: "Dr. Sarah Jenkins",
     actorRole: "Senior Cardiologist",
@@ -240,9 +281,13 @@ export const SAMPLE_AUDIT_LOGS: AuditLogItem[] = [
     action: "Record Viewed",
     resource: "Longitudinal Medical History & Active Prescription List",
     ipAddress: "192.168.10.42 (Internal Clinical Network)",
+    patientName: "Johnathan Doe",
+    patientId: "MB-2026-89412",
+    details: "Authorized 24h session active. Reviewed prior hypertension notes.",
+    integrityHash: "sha256:a2b8e612c287a93a4f61f71a3962d3a7e4b52479e0018a1a473bc4b01d32a904",
   },
   {
-    id: "aud-03",
+    id: "aud-04",
     timestamp: "2026-08-18 10:31 AM",
     actorName: "Johnathan Doe (Patient)",
     actorRole: "Patient",
@@ -250,9 +295,13 @@ export const SAMPLE_AUDIT_LOGS: AuditLogItem[] = [
     action: "Consent Approved",
     resource: "Granted 24-hour access window to Apollo Specialty Hospital",
     ipAddress: "172.56.21.99 (Mobile Client)",
+    patientName: "Johnathan Doe",
+    patientId: "MB-2026-89412",
+    details: "Patient approved incoming access request from Dr. Sarah Jenkins.",
+    integrityHash: "sha256:6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
   },
   {
-    id: "aud-04",
+    id: "aud-05",
     timestamp: "2026-03-04 09:20 AM",
     actorName: "Dr. Robert Vance",
     actorRole: "Pulmonologist",
@@ -260,15 +309,50 @@ export const SAMPLE_AUDIT_LOGS: AuditLogItem[] = [
     action: "Report Downloaded",
     resource: "Renal Doppler Ultrasound (renal_echo_nov2025.pdf)",
     ipAddress: "10.20.1.15 (Hospital Workstation)",
+    patientName: "Johnathan Doe",
+    patientId: "MB-2026-89412",
+    details: "Downloaded baseline imaging report during pulmonology review.",
+    integrityHash: "sha256:d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+  },
+];
+
+export const SAMPLE_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: "notif-01",
+    title: "Incoming Access Request",
+    message: "Dr. Sarah Jenkins from Apollo Specialty Hospital has requested 24-hour access to your longitudinal medical record.",
+    type: "access_request",
+    timestamp: "10 minutes ago",
+    isRead: false,
+    actionUrl: "/patient/access-requests/req-01",
+    actionLabel: "Review & Respond",
   },
   {
-    id: "aud-05",
-    timestamp: "2025-12-14 02:45 PM",
-    actorName: "Johnathan Doe (Patient)",
-    actorRole: "Patient",
-    hospital: "Patient Portal Direct",
-    action: "Consent Revoked",
-    resource: "Declined access request from St. Jude Clinic",
-    ipAddress: "172.56.21.99 (Mobile Client)",
+    id: "notif-02",
+    title: "Emergency Break-Glass Access Alert",
+    message: "Emergency access protocol was initiated for your profile by Apollo Specialty Hospital ED due to acute cardiac triage.",
+    type: "emergency_access_alert",
+    timestamp: "25 minutes ago",
+    isRead: false,
+    actionUrl: "/patient/access-history",
+    actionLabel: "Inspect Audit Trail",
+  },
+  {
+    id: "notif-03",
+    title: "New Clinical Consultation Added",
+    message: "Dr. Sarah Jenkins recorded an outpatient consultation note and uploaded 2 diagnostic attachments (ECG & CMP).",
+    type: "record_updated",
+    timestamp: "2 weeks ago",
+    isRead: true,
+    actionUrl: "/patient/timeline",
+    actionLabel: "View Timeline",
+  },
+  {
+    id: "notif-04",
+    title: "Access Window Concluded",
+    message: "The 24-hour temporary access window granted to Metro Health Care Center has expired and is now closed.",
+    type: "access_revoked",
+    timestamp: "2026-03-05 09:15 AM",
+    isRead: true,
   },
 ];

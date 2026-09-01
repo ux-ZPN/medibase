@@ -27,13 +27,37 @@ export default function HospitalStaffDashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/staff/emergency"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/80 border border-rose-800 text-rose-300 hover:bg-rose-900 text-xs font-bold transition-colors"
+            >
+              <span>Emergency Access</span>
+            </Link>
+            <Link
+              href="/staff/access-requests"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-900 text-xs font-medium transition-colors"
+            >
+              <span>Requests</span>
+            </Link>
+            <Link
+              href="/staff/audit-log"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-900 text-xs font-medium transition-colors"
+            >
+              <span>Audit Log</span>
+            </Link>
+            <Link
+              href="/staff/profile"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 text-teal-300 hover:text-white hover:bg-slate-900 text-xs font-medium transition-colors"
+            >
+              <span>Dr. Jenkins</span>
+            </Link>
             <Link
               href="/role-select"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 text-xs font-medium transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Switch Role</span>
+              <span>Switch</span>
             </Link>
           </div>
         </div>

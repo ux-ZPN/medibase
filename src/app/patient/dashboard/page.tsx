@@ -38,6 +38,14 @@ export default function PatientDashboardPage() {
 
           <div className="flex items-center gap-3">
             <Link
+              href="/patient/notifications"
+              className="relative p-2 rounded-lg border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+              title="Notifications"
+            >
+              <span className="w-2 h-2 rounded-full bg-sky-400 absolute top-1.5 right-1.5" />
+              <Activity className="w-4 h-4 text-sky-400" />
+            </Link>
+            <Link
               href="/role-select"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 text-xs font-medium transition-colors"
             >

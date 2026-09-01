@@ -5,6 +5,7 @@ import {
   Sparkles,
   History,
   FilePlus,
+  FileText,
   Heart,
   AlertTriangle,
   Pill,
@@ -74,79 +75,103 @@ export default async function PatientOverviewStaffPage(props: {
           <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4">
             Clinical Tools & Longitudinal Actions
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* 1. What's Changed? */}
             <Link
               href={`/staff/patient/${patientId}/whats-changed`}
-              className="group p-6 rounded-2xl border-2 border-teal-500/40 bg-gradient-to-b from-teal-950/20 to-slate-900/60 hover:bg-slate-900 hover:border-teal-400 transition-all duration-200 flex flex-col justify-between shadow-xl shadow-teal-500/5"
+              className="group p-5 rounded-2xl border-2 border-teal-500/40 bg-gradient-to-b from-teal-950/20 to-slate-900/60 hover:bg-slate-900 hover:border-teal-400 transition-all duration-200 flex flex-col justify-between shadow-xl shadow-teal-500/5"
             >
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-teal-950 border border-teal-700/60 flex items-center justify-center text-teal-400 group-hover:bg-teal-400 group-hover:text-slate-950 transition-all">
-                  <Sparkles className="w-6 h-6" />
+                <div className="w-11 h-11 rounded-xl bg-teal-950 border border-teal-700/60 flex items-center justify-center text-teal-400 group-hover:bg-teal-400 group-hover:text-slate-950 transition-all">
+                  <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-teal-400 mb-1">
-                    Structured Delta Summary
+                    Delta Summary
                   </div>
-                  <h3 className="text-xl font-bold text-white group-hover:text-teal-300">
+                  <h3 className="text-lg font-bold text-white group-hover:text-teal-300">
                     What&apos;s Changed?
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                    Instantly review structured clinical updates since previous encounters (new diagnoses, medications, and labs).
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Review structured updates (new diagnoses, medications, and labs).
                   </p>
                 </div>
               </div>
-              <div className="mt-6 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-semibold text-teal-400 group-hover:text-teal-300">
-                <span>View Clinical Changes</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <div className="mt-5 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-semibold text-teal-400 group-hover:text-teal-300">
+                <span>View Changes</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
 
             {/* 2. Medical Timeline */}
             <Link
               href={`/staff/patient/${patientId}/timeline`}
-              className="group p-6 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-sky-500/60 transition-all duration-200 flex flex-col justify-between"
+              className="group p-5 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-sky-500/60 transition-all duration-200 flex flex-col justify-between"
             >
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-sky-950 border border-sky-800/60 flex items-center justify-center text-sky-400 group-hover:bg-sky-500 group-hover:text-slate-950 transition-all">
-                  <History className="w-6 h-6" />
+                <div className="w-11 h-11 rounded-xl bg-sky-950 border border-sky-800/60 flex items-center justify-center text-sky-400 group-hover:bg-sky-500 group-hover:text-slate-950 transition-all">
+                  <History className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white group-hover:text-sky-300">
+                  <h3 className="text-lg font-bold text-white group-hover:text-sky-300">
                     Medical Timeline
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                    Explore complete multi-hospital longitudinal records, past consultations, discharge summaries, and lab files.
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Explore multi-hospital records, consultations, and lab files.
                   </p>
                 </div>
               </div>
-              <div className="mt-6 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-semibold text-sky-400 group-hover:text-sky-300">
+              <div className="mt-5 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-semibold text-sky-400 group-hover:text-sky-300">
                 <span>Explore Timeline</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
 
             {/* 3. Record New Visit */}
             <Link
               href={`/staff/patient/${patientId}/new-visit`}
-              className="group p-6 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-emerald-500/60 transition-all duration-200 flex flex-col justify-between"
+              className="group p-5 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-emerald-500/60 transition-all duration-200 flex flex-col justify-between"
             >
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-emerald-950 border border-emerald-800/60 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-400 group-hover:text-slate-950 transition-all">
-                  <FilePlus className="w-6 h-6" />
+                <div className="w-11 h-11 rounded-xl bg-emerald-950 border border-emerald-800/60 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-400 group-hover:text-slate-950 transition-all">
+                  <FilePlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white group-hover:text-emerald-300">
+                  <h3 className="text-lg font-bold text-white group-hover:text-emerald-300">
                     Record New Visit
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                    Document today&apos;s clinical consultation, diagnosis, vitals, prescriptions, and upload diagnostic attachments.
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Document today&apos;s consultation, diagnosis, vitals, and Rx.
                   </p>
                 </div>
               </div>
-              <div className="mt-6 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-semibold text-emerald-400 group-hover:text-emerald-300">
-                <span>Start New Visit</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <div className="mt-5 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-semibold text-emerald-400 group-hover:text-emerald-300">
+                <span>Start Visit</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* 4. Upload Medical Report */}
+            <Link
+              href={`/staff/patient/${patientId}/upload-report`}
+              className="group p-5 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-indigo-500/60 transition-all duration-200 flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="w-11 h-11 rounded-xl bg-indigo-950 border border-indigo-800/60 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-500 group-hover:text-slate-950 transition-all">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white group-hover:text-indigo-300">
+                    Upload Report
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Upload and attach diagnostic lab, imaging, or ECG files.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-semibold text-indigo-400 group-hover:text-indigo-300">
+                <span>Upload Report</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
           </div>
