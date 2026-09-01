@@ -19,7 +19,8 @@ export interface StoredAccessRequest {
 export interface StoredAccessGrant {
   id: string;
   patient_id: string;
-  access_request_id: string;
+  access_request_id?: string;
+  emergency_access_id?: string;
   hospital_id: string;
   staff_id: string;
   doctor_name: string;
@@ -27,7 +28,21 @@ export interface StoredAccessGrant {
   granted_at: string;
   valid_until: string;
   is_active: boolean;
-  access_type: string;
+  access_type: "view_only" | "view_and_contribute" | "emergency";
+  reason?: string;
+}
+
+export interface StoredEmergencyAccess {
+  id: string;
+  patient_id: string;
+  staff_id: string;
+  hospital_id: string;
+  doctor_name: string;
+  hospital_name: string;
+  emergency_reason: string;
+  access_started_at: string;
+  access_ended_at: string;
+  is_active: boolean;
 }
 
 export interface StoredAuditLog {
@@ -111,6 +126,7 @@ export function extractPatientIndex(idOrStr: string): number | null {
 const globalStore = globalThis as unknown as {
   __medibase_access_requests?: StoredAccessRequest[];
   __medibase_access_grants?: StoredAccessGrant[];
+  __medibase_emergency_access?: StoredEmergencyAccess[];
   __medibase_audit_logs?: StoredAuditLog[];
   __medibase_clinical_encounters?: Record<string, ClinicalEncounter[]>;
   __medibase_medical_reports?: StoredMedicalReport[];
@@ -141,6 +157,10 @@ if (!globalStore.__medibase_access_grants) {
   globalStore.__medibase_access_grants = [];
 }
 
+if (!globalStore.__medibase_emergency_access) {
+  globalStore.__medibase_emergency_access = [];
+}
+
 if (!globalStore.__medibase_audit_logs) {
   globalStore.__medibase_audit_logs = [
     {
@@ -154,22 +174,6 @@ if (!globalStore.__medibase_audit_logs) {
       action_label: "Viewed medical history",
       purpose: "Consultation",
       patient_id: "MB-100001",
-      is_emergency: false,
-      access_type: "normal",
-      ip_address: "192.168.1.45",
-      device: "Hospital Terminal-01 (Chrome/Windows)",
-    },
-    {
-      id: "audit-seed-002",
-      timestamp: "31 Aug 2026, 11:30 AM",
-      actor_name: "Dr. Rahul Sharma",
-      actor_role: "Senior Physician",
-      hospital_id: "a0000000-0000-0000-0000-000000000001",
-      hospital_name: "City General Hospital",
-      action: "access_request_created",
-      action_label: "Access Request Initiated",
-      purpose: "Cardiac Follow-up Evaluation",
-      patient_id: "MB-100003",
       is_emergency: false,
       access_type: "normal",
       ip_address: "192.168.1.45",
@@ -340,39 +344,13 @@ if (!globalStore.__medibase_clinical_encounters) {
         ],
         clinical_notes: "Baseline visit. BP slightly elevated at 138/88 mmHg. Advised dietary sodium restriction and lifestyle adjustments.",
       },
-      {
-        id: "enc-103-3",
-        patient_id: "MB-100003",
-        date: "15 Jul 2023",
-        hospital_name: "Metro Health Institute",
-        department: "Diagnostics Laboratory",
-        doctor_name: "Dr. Anjali Rao",
-        doctor_role: "Consultant Pathologist",
-        visit_type: "Diagnostic Review",
-        chief_complaint: "Periodic metabolic and wellness panel.",
-        diagnoses: [
-          { code: "Z00.00", name: "General Adult Medical Examination", is_primary: true },
-        ],
-        prescriptions: [],
-        vitals: {
-          bp: "120/80 mmHg",
-          heart_rate: 70,
-          glucose_mg_dl: 98,
-        },
-        investigations: [
-          { name: "Comprehensive Metabolic Panel", status: "Completed", result: "Unremarkable" },
-        ],
-        reports: [
-          { title: "Metabolic_Panel_Jul15.pdf", file_name: "Metabolic_Panel_Jul15.pdf" },
-        ],
-        clinical_notes: "Routine annual wellness screening. All laboratory parameters within normal physiological limits.",
-      },
     ],
   };
 }
 
 const runtimeAccessRequests = globalStore.__medibase_access_requests!;
 const runtimeAccessGrants = globalStore.__medibase_access_grants!;
+const runtimeEmergencyAccess = globalStore.__medibase_emergency_access!;
 const runtimeAuditLogs = globalStore.__medibase_audit_logs!;
 const runtimeEncounters = globalStore.__medibase_clinical_encounters!;
 const runtimeMedicalReports = globalStore.__medibase_medical_reports!;
@@ -396,9 +374,74 @@ export function recordAuditLog(entry: Omit<StoredAuditLog, "id" | "timestamp"> &
     device: entry.device || "Hospital Terminal (Chrome/Secure)",
   };
 
-  // Append-only
   runtimeAuditLogs.unshift(log);
   return log;
+}
+
+export function createEmergencyAccessOverride(data: {
+  patientId: string;
+  staffId: string;
+  hospitalId: string;
+  doctorName: string;
+  hospitalName: string;
+  emergencyReason: string;
+  durationMinutes?: number;
+}): { success: boolean; emergencyAccess: StoredEmergencyAccess; grant: StoredAccessGrant } {
+  const durationMs = (data.durationMinutes || 60) * 60 * 1000;
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const expiresAtIso = new Date(now.getTime() + durationMs).toISOString();
+
+  const emId = `em-${Date.now()}`;
+  const emRecord: StoredEmergencyAccess = {
+    id: emId,
+    patient_id: data.patientId,
+    staff_id: data.staffId,
+    hospital_id: data.hospitalId,
+    doctor_name: data.doctorName,
+    hospital_name: data.hospitalName,
+    emergency_reason: data.emergencyReason,
+    access_started_at: nowIso,
+    access_ended_at: expiresAtIso,
+    is_active: true,
+  };
+
+  runtimeEmergencyAccess.unshift(emRecord);
+
+  // Create active Emergency Access Grant
+  const grant: StoredAccessGrant = {
+    id: `grant-em-${Date.now()}`,
+    patient_id: data.patientId,
+    emergency_access_id: emId,
+    hospital_id: data.hospitalId,
+    staff_id: data.staffId,
+    doctor_name: data.doctorName,
+    hospital_name: data.hospitalName,
+    granted_at: nowIso,
+    valid_until: expiresAtIso,
+    is_active: true,
+    access_type: "emergency",
+    reason: data.emergencyReason,
+  };
+
+  runtimeAccessGrants.unshift(grant);
+
+  // Centralized audit logging for emergency access
+  recordAuditLog({
+    id: `AUD-${Date.now().toString().slice(-6)}`,
+    actor_name: data.doctorName,
+    actor_role: "Doctor",
+    hospital_id: data.hospitalId,
+    hospital_name: data.hospitalName,
+    action: "emergency_access_granted",
+    action_label: "Emergency Access Override Activated",
+    purpose: data.emergencyReason,
+    patient_id: data.patientId,
+    is_emergency: true,
+    access_type: "emergency",
+  });
+
+  return { success: true, emergencyAccess: emRecord, grant };
 }
 
 export function findPendingAccessRequest(
@@ -432,7 +475,6 @@ export function getAccessRequestById(id: string): StoredAccessRequest | undefine
 export function addAccessRequest(req: StoredAccessRequest): void {
   runtimeAccessRequests.unshift(req);
 
-  // Log in centralized audit log
   recordAuditLog({
     actor_name: req.doctor_name,
     actor_role: req.doctor_role,
@@ -487,7 +529,6 @@ export function approveAccessRequest(
     return { success: true, grant: newGrant };
   }
 
-  // Patient Ownership Verification
   const targetIdx = extractPatientIndex(req.patient_id);
   const callerIdx = extractPatientIndex(callerPatientId);
   const isOwner =
@@ -506,12 +547,10 @@ export function approveAccessRequest(
     return { success: false, error: `Request cannot be approved because its status is '${req.status}'.` };
   }
 
-  // Mark request approved
   req.status = "approved";
   req.is_active = false;
   req.responded_at = nowIso;
 
-  // Create active Access Grant (30 min validity)
   const grant: StoredAccessGrant = {
     id: `grant-${Date.now()}`,
     patient_id: req.patient_id,
@@ -528,7 +567,6 @@ export function approveAccessRequest(
 
   runtimeAccessGrants.unshift(grant);
 
-  // Log in centralized audit trail
   recordAuditLog({
     actor_name: req.doctor_name,
     actor_role: req.doctor_role,
@@ -554,7 +592,6 @@ export function denyAccessRequest(
     return { success: true };
   }
 
-  // Patient Ownership Verification
   const targetIdx = extractPatientIndex(req.patient_id);
   const callerIdx = extractPatientIndex(callerPatientId);
   const isOwner =
@@ -577,7 +614,6 @@ export function denyAccessRequest(
   req.is_active = false;
   req.responded_at = new Date().toISOString();
 
-  // Deactivate any active grants for this patient/request upon denial
   runtimeAccessGrants.forEach((g) => {
     const grantIdx = extractPatientIndex(g.patient_id);
     if (
@@ -589,7 +625,6 @@ export function denyAccessRequest(
     }
   });
 
-  // Log in centralized audit trail
   recordAuditLog({
     actor_name: req.doctor_name,
     actor_role: req.doctor_role,
@@ -614,7 +649,7 @@ export function checkClinicalAccess(
   const now = new Date();
   const targetIdx = extractPatientIndex(patientIdOrMedibaseId);
 
-  // Check if any active, unexpired grant exists for this specific patient
+  // Check if any active, unexpired grant (normal OR emergency) exists
   const grant = runtimeAccessGrants.find((g) => {
     const grantIdx = extractPatientIndex(g.patient_id);
 
@@ -650,7 +685,7 @@ export function checkClinicalAccess(
     hospital_name: "City General Hospital",
     action: "unauthorized_access_attempt",
     action_label: "Unauthorized Access Attempt Blocked",
-    purpose: "Clinical View (Missing Active Consent)",
+    purpose: "Clinical View (Missing Active Consent or Expired)",
     patient_id: patientIdOrMedibaseId,
     is_emergency: false,
     access_type: "normal",
@@ -707,7 +742,6 @@ export function getStaffHospitalAuditLogs(
   filters?: { staffName?: string; patientId?: string; action?: string; accessType?: string }
 ): StoredAuditLog[] {
   return runtimeAuditLogs.filter((a) => {
-    // Scoped to staff hospital
     const matchesHospital =
       !hospitalId ||
       !a.hospital_id ||
@@ -769,10 +803,8 @@ export function recordClinicalEncounter(
     }),
   };
 
-  // Add at TOP (newest first)
   runtimeEncounters[key].unshift(newEnc);
 
-  // Centralized audit logging
   recordAuditLog({
     actor_name: encounterData.doctor_name,
     actor_role: encounterData.doctor_role || "Doctor",
@@ -791,7 +823,6 @@ export function recordClinicalEncounter(
 export function addMedicalReport(report: StoredMedicalReport): StoredMedicalReport {
   runtimeMedicalReports.unshift(report);
 
-  // Also attach to latest encounter of this patient if available
   const targetIdx = extractPatientIndex(report.patient_id) ?? 3;
   const encounters = runtimeEncounters[String(targetIdx)];
   if (encounters && encounters.length > 0) {
@@ -803,7 +834,6 @@ export function addMedicalReport(report: StoredMedicalReport): StoredMedicalRepo
     });
   }
 
-  // Centralized audit logging
   recordAuditLog({
     actor_name: report.doctor_name,
     actor_role: "Doctor",
