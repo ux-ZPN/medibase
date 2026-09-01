@@ -77,6 +77,22 @@ export interface ClinicalEncounter {
   clinical_notes: string;
 }
 
+export interface StoredMedicalReport {
+  id: string;
+  patient_id: string;
+  encounter_id?: string;
+  uploaded_by_staff_id: string;
+  hospital_name: string;
+  doctor_name: string;
+  report_title: string;
+  report_type: string;
+  file_name: string;
+  file_size_bytes: number;
+  mime_type: string;
+  storage_path: string;
+  created_at: string;
+}
+
 export function extractPatientIndex(idOrStr: string): number | null {
   if (!idOrStr) return null;
   const digits = idOrStr.replace(/\D/g, "");
@@ -92,6 +108,7 @@ const globalStore = globalThis as unknown as {
   __medibase_access_grants?: StoredAccessGrant[];
   __medibase_audit_logs?: StoredAuditLog[];
   __medibase_clinical_encounters?: Record<string, ClinicalEncounter[]>;
+  __medibase_medical_reports?: StoredMedicalReport[];
 };
 
 if (!globalStore.__medibase_access_requests) {
@@ -132,6 +149,26 @@ if (!globalStore.__medibase_audit_logs) {
       purpose: "Consultation",
       patient_id: "MB-100001",
       is_emergency: false,
+    },
+  ];
+}
+
+if (!globalStore.__medibase_medical_reports) {
+  globalStore.__medibase_medical_reports = [
+    {
+      id: "rep-seed-103",
+      patient_id: "MB-100003",
+      encounter_id: "enc-103-1",
+      uploaded_by_staff_id: "b0000000-0000-0000-0000-000000000001",
+      hospital_name: "City General Hospital",
+      doctor_name: "Dr. Rahul Sharma",
+      report_title: "Lipid Profile & HbA1c Lab Report",
+      report_type: "lab_report",
+      file_name: "Lab_Results_Oct24.pdf",
+      file_size_bytes: 245000,
+      mime_type: "application/pdf",
+      storage_path: "medical-records/patient/10000000-0000-0000-0000-000000000003/lab_results_oct24.pdf",
+      created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     },
   ];
 }
@@ -313,6 +350,7 @@ const runtimeAccessRequests = globalStore.__medibase_access_requests!;
 const runtimeAccessGrants = globalStore.__medibase_access_grants!;
 const runtimeAuditLogs = globalStore.__medibase_audit_logs!;
 const runtimeEncounters = globalStore.__medibase_clinical_encounters!;
+const runtimeMedicalReports = globalStore.__medibase_medical_reports!;
 
 export function findPendingAccessRequest(
   patientId: string,
@@ -617,4 +655,53 @@ export function recordClinicalEncounter(
   });
 
   return newEnc;
+}
+
+export function addMedicalReport(report: StoredMedicalReport): StoredMedicalReport {
+  runtimeMedicalReports.unshift(report);
+
+  // Also attach to latest encounter of this patient if available
+  const targetIdx = extractPatientIndex(report.patient_id) ?? 3;
+  const encounters = runtimeEncounters[String(targetIdx)];
+  if (encounters && encounters.length > 0) {
+    if (!encounters[0].reports) encounters[0].reports = [];
+    encounters[0].reports.unshift({
+      title: report.report_title,
+      file_name: report.file_name,
+      file_url: report.storage_path,
+    });
+  }
+
+  // Log in audit trail
+  runtimeAuditLogs.unshift({
+    id: `audit-${Date.now()}`,
+    timestamp: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }),
+    actor_name: report.doctor_name,
+    actor_role: "Doctor",
+    hospital_name: report.hospital_name,
+    action: "medical_file_uploaded",
+    action_label: `Uploaded Medical File (${report.file_name})`,
+    purpose: "Clinical Report Attachment",
+    patient_id: report.patient_id,
+    is_emergency: false,
+  });
+
+  return report;
+}
+
+export function getPatientReports(patientIdentifier: string): StoredMedicalReport[] {
+  const targetIdx = extractPatientIndex(patientIdentifier);
+  return runtimeMedicalReports.filter((r) => {
+    const rIdx = extractPatientIndex(r.patient_id);
+    return (
+      r.patient_id === patientIdentifier ||
+      (targetIdx !== null && rIdx !== null && targetIdx === rIdx) ||
+      r.patient_id.includes(patientIdentifier) ||
+      patientIdentifier.includes(r.patient_id)
+    );
+  });
+}
+
+export function getReportById(reportId: string): StoredMedicalReport | undefined {
+  return runtimeMedicalReports.find((r) => r.id === reportId || r.file_name === reportId);
 }
