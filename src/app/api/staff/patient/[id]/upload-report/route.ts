@@ -217,7 +217,7 @@ export async function POST(
       const jsonBody = await request.json().catch(() => ({}));
       fileName = jsonBody.fileName || jsonBody.file_name || fileName;
       mimeType = jsonBody.mimeType || jsonBody.mime_type || mimeType;
-      fileSizeBytes = jsonBody.fileSizeBytes || jsonBody.file_size || fileSizeBytes;
+      fileSizeBytes = jsonBody.fileSizeBytes || jsonBody.file_size || jsonBody.fileSize || fileSizeBytes;
       reportTitle = jsonBody.reportTitle || jsonBody.title || reportTitle;
       encounterId = jsonBody.encounterId || jsonBody.encounter_id;
     }
