@@ -1,125 +1,151 @@
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Search,
-  ArrowRight,
-  Info,
-  CheckCircle2,
-  Lock,
-} from "lucide-react";
-import { SAMPLE_PATIENT } from "@/lib/mock-data";
+import { StaffShell } from "@/components/layout/staff-shell";
+import { Search, QrCode, ArrowRight, ShieldCheck, Calendar, User, UserCheck } from "lucide-react";
 
 export default function FindPatientPage() {
+  const [searchQuery, setSearchQuery] = useState("MB-102394");
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-teal-500 selection:text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md px-6 h-16 flex items-center justify-between sticky top-0 z-50">
-        <Link
-          href="/staff/dashboard"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Staff Dashboard</span>
-        </Link>
-        <div className="font-bold text-sm text-slate-200">
-          Patient Lookup
-        </div>
-        <div className="w-20" />
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-3xl mx-auto px-4 py-8 w-full space-y-8">
+    <StaffShell activeNav="find-patient">
+      <div className="space-y-8 max-w-5xl">
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-extrabold text-white">Find Patient by MediBase ID</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Search patient record identifier to initiate the secure authorization request.
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            Find a Patient
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Search by MediBase ID or scan their QR code to securely access records.
           </p>
         </div>
 
-        {/* Search Input Simulation */}
-        <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm space-y-4">
-          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Enter Patient MediBase ID
+        {/* Search Box Card */}
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            Patient ID
           </label>
-          <div className="relative">
-            <input
-              type="text"
-              defaultValue={SAMPLE_PATIENT.medibaseId}
-              placeholder="e.g. MB-2026-89412"
-              className="w-full px-4 py-3.5 pl-11 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-sm focus:outline-none focus:border-teal-500 transition-colors"
-            />
-            <Search className="w-5 h-5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          </div>
-          <p className="text-xs text-slate-500">
-            Simulated search populated with patient ID: <span className="font-mono text-sky-400">{SAMPLE_PATIENT.medibaseId}</span>
-          </p>
-        </div>
-
-        {/* Security Rule Banner */}
-        <div className="p-4 rounded-xl border border-teal-500/30 bg-teal-950/30 flex items-start gap-3">
-          <Info className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
-          <div className="text-xs text-teal-200/90 leading-relaxed">
-            <span className="font-bold text-white">Identification Phase:</span> Finding a patient confirms identity only. Protected longitudinal records remain locked until the patient formally authorizes access.
-          </div>
-        </div>
-
-        {/* Identified Patient Match Card */}
-        <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/70 space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-teal-950 border border-teal-800 flex items-center justify-center text-teal-400 font-bold text-lg">
-                {SAMPLE_PATIENT.name.charAt(0)}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-base text-white">{SAMPLE_PATIENT.name}</h3>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Identity Matched
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  ID: {SAMPLE_PATIENT.medibaseId} • Age {SAMPLE_PATIENT.age} ({SAMPLE_PATIENT.gender})
-                </p>
-              </div>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Enter MediBase ID (e.g., MB-102394)"
+                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+              />
             </div>
-
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-amber-400 px-3 py-1.5 rounded-lg bg-amber-950/40 border border-amber-800/60">
-              <Lock className="w-3.5 h-3.5" />
-              <span>Records Locked</span>
-            </div>
+            <button className="px-6 py-3 bg-[#0F172A] hover:bg-slate-800 text-white font-medium text-sm rounded-lg transition-colors">
+              Search
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-              <span className="text-slate-500">Blood Group</span>
-              <div className="font-bold text-rose-400 mt-0.5">{SAMPLE_PATIENT.bloodGroup}</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-              <span className="text-slate-500">Date of Birth</span>
-              <div className="font-medium text-slate-200 mt-0.5">{SAMPLE_PATIENT.dob}</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-              <span className="text-slate-500">Emergency Phone</span>
-              <div className="font-medium text-slate-200 mt-0.5">{SAMPLE_PATIENT.emergencyContact.phone}</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-              <span className="text-slate-500">Allergies</span>
-              <div className="font-medium text-amber-300 mt-0.5">{SAMPLE_PATIENT.allergies.join(", ")}</div>
-            </div>
-          </div>
-
-          {/* Primary Action Button */}
-          <div className="pt-2">
+          <div className="mt-4 text-center">
             <Link
-              href={`/staff/patient/${SAMPLE_PATIENT.medibaseId}/authorize`}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-teal-500/20"
+              href="/staff/scan-qr"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#006699] hover:underline"
             >
-              <span>Request Access Authorization</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>or</span>
+              <QrCode className="w-3.5 h-3.5" />
+              <span>Scan QR instead</span>
             </Link>
           </div>
         </div>
-      </main>
-    </div>
+
+        {/* Search Result */}
+        <div>
+          <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+            SEARCH RESULT
+          </h2>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-800 font-bold text-base flex items-center justify-center shrink-0">
+                RS
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-base font-bold text-slate-900">Rahul Sharma</h3>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                    <ShieldCheck className="w-3 h-3" />
+                    Authorized
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <User className="w-3.5 h-3.5" />
+                    MB-102394
+                  </span>
+                  <span>•</span>
+                  <span>Age: 32</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    Last visit: Oct 12, 2023
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <Link
+              href="/staff/patient/MB-102394"
+              className="px-5 py-2 border border-[#006699] text-[#006699] hover:bg-sky-50 font-semibold text-xs rounded-lg transition-colors text-center"
+            >
+              View Patient
+            </Link>
+          </div>
+        </div>
+
+        {/* Recently Accessed Section */}
+        <div>
+          <h2 className="text-base font-bold text-slate-900 mb-3">
+            Recently Accessed
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Patient 1 */}
+            <Link
+              href="/staff/patient/MB-992817"
+              className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-bold text-slate-900 text-sm">Sarah Jenkins</h4>
+                <ArrowRight className="w-4 h-4 text-slate-400" />
+              </div>
+              <p className="text-xs text-slate-500 mb-3">MB-992817</p>
+              <p className="text-[11px] text-slate-400">Accessed: Today, 09:14 AM</p>
+            </Link>
+
+            {/* Patient 2 */}
+            <Link
+              href="/staff/patient/MB-883716"
+              className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-bold text-slate-900 text-sm">David Chen</h4>
+                <ArrowRight className="w-4 h-4 text-slate-400" />
+              </div>
+              <p className="text-xs text-slate-500 mb-3">MB-883716</p>
+              <p className="text-[11px] text-slate-400">Accessed: Yesterday</p>
+            </Link>
+
+            {/* Patient 3 */}
+            <Link
+              href="/staff/patient/MB-774625"
+              className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-bold text-slate-900 text-sm">Maria Rodriguez</h4>
+                <ArrowRight className="w-4 h-4 text-slate-400" />
+              </div>
+              <p className="text-xs text-slate-500 mb-3">MB-774625</p>
+              <p className="text-[11px] text-slate-400">Accessed: Oct 24, 2023</p>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </StaffShell>
   );
 }

@@ -1,190 +1,175 @@
+"use client";
+
+import React, { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { StaffShell } from "@/components/layout/staff-shell";
 import {
   ArrowLeft,
-  FilePlus,
+  Search,
+  Lock,
   Save,
-  Paperclip,
-  Pill,
-  Info,
+  Building2,
+  Stethoscope,
+  Clock,
 } from "lucide-react";
-import { SAMPLE_PATIENT } from "@/lib/mock-data";
 
-export default async function RecordNewVisitPage(props: {
+export default function RecordNewVisitPage({
+  params,
+}: {
   params: Promise<{ id: string }>;
 }) {
-  const params = await props.params;
-  const patientId = params.id || SAMPLE_PATIENT.medibaseId;
+  const resolvedParams = use(params);
+  const patientId = resolvedParams.id || "MB-102394";
+  const router = useRouter();
+
+  const [chiefComplaint, setChiefComplaint] = useState(
+    "Routine check-up and medication review. Patient reports slight dizziness in morning."
+  );
+  const [diagnosis, setDiagnosis] = useState("Essential Hypertension (I10)");
+  const [clinicalNotes, setClinicalNotes] = useState(
+    "BP 138/88 mmHg. Pulse 72 bpm regular. Cardiovascular and respiratory exams unremarkable. Adjusted medication schedule."
+  );
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setTimeout(() => {
+      router.push(`/staff/patient/${patientId}/timeline`);
+    }, 600);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-teal-500 selection:text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md px-6 h-16 flex items-center justify-between sticky top-0 z-50">
-        <Link
-          href={`/staff/patient/${patientId}/timeline`}
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Cancel & Return to Timeline</span>
-        </Link>
-        <div className="font-bold text-sm text-slate-200">
-          Clinical Encounter Documentation
-        </div>
-        <div className="w-20" />
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-3xl mx-auto px-4 py-8 w-full space-y-8">
-        {/* Title */}
-        <div className="border-b border-slate-800/80 pb-6">
-          <div className="flex items-center gap-2 text-xs font-semibold px-2.5 py-1 rounded-md bg-teal-950 text-teal-400 border border-teal-800 w-fit mb-2">
-            <FilePlus className="w-3.5 h-3.5" />
-            <span>Authorized Contribution Flow</span>
-          </div>
-          <h1 className="text-3xl font-extrabold text-white">Record New Patient Visit</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Contributing to the longitudinal medical history of {SAMPLE_PATIENT.name} ({patientId}).
-          </p>
+    <StaffShell activeNav="recent-patients">
+      <div className="space-y-6 max-w-5xl mx-auto">
+        {/* Header with Back button */}
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/staff/patient/${patientId}`}
+            className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            Record New Visit
+          </h1>
         </div>
 
-        {/* Clinical Documentation Form */}
-        <form action={`/staff/patient/${patientId}/timeline?saved=true`} className="space-y-6">
-          {/* Metadata Block */}
-          <div className="p-4 rounded-2xl border border-slate-800 bg-slate-900/60 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div>
-              <span className="text-slate-500 font-medium">Attending Provider</span>
-              <div className="font-semibold text-slate-200 mt-0.5">Dr. Sarah Jenkins, MD</div>
+        {/* Patient Context Card */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold text-slate-900">Rahul Sharma</h2>
+              <span className="text-xs text-slate-500">({patientId})</span>
             </div>
-            <div>
-              <span className="text-slate-500 font-medium">Facility / Department</span>
-              <div className="font-semibold text-slate-200 mt-0.5">Apollo Specialty • Cardiology</div>
-            </div>
-            <div>
-              <span className="text-slate-500 font-medium">Date & Time</span>
-              <div className="font-semibold text-teal-400 font-mono mt-0.5">2026-09-01 (Current)</div>
-            </div>
-          </div>
-
-          {/* Visit Type */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-              Encounter / Visit Type
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {["Outpatient", "Inpatient", "Emergency", "Telehealth"].map((type, idx) => (
-                <label
-                  key={type}
-                  className="flex items-center justify-center p-3 rounded-xl border border-slate-800 bg-slate-900/50 hover:border-teal-500 cursor-pointer text-xs font-semibold text-slate-200 transition-colors has-checked:border-teal-500 has-checked:bg-teal-950/40 has-checked:text-teal-300"
-                >
-                  <input
-                    type="radio"
-                    name="visitType"
-                    value={type}
-                    defaultChecked={idx === 0}
-                    className="sr-only"
-                  />
-                  <span>{type}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Chief Complaint */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-              Chief Complaint / Reason for Visit
-            </label>
-            <input
-              type="text"
-              name="chiefComplaint"
-              defaultValue="Scheduled 6-month cardiovascular checkup and prescription refill"
-              placeholder="e.g. Chest tightness, hypertension follow-up"
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-teal-500 transition-colors"
-            />
-          </div>
-
-          {/* Diagnosis */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-              Clinical Diagnosis
-            </label>
-            <input
-              type="text"
-              name="diagnosis"
-              defaultValue="Essential Hypertension (Well-Controlled)"
-              placeholder="e.g. Stage 1 Hypertension (ICD-10: I10)"
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-teal-500 transition-colors"
-            />
-          </div>
-
-          {/* Clinical Examination Notes */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-              Clinical Findings & Progress Notes
-            </label>
-            <textarea
-              name="clinicalNotes"
-              rows={4}
-              defaultValue="Vitals: BP 124/80 mmHg, HR 68 bpm regular, SpO2 99% on room air. Cardiovascular and chest exam unremarkable. Patient reports good tolerance of antihypertensive therapy."
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-teal-500 transition-colors resize-none"
-            />
-          </div>
-
-          {/* Prescriptions */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <Pill className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Prescribed Medications & Dosages</span>
-            </label>
-            <input
-              type="text"
-              name="prescriptions"
-              defaultValue="Amlodipine Besylate 5mg OD (Refill x 90 days)"
-              placeholder="e.g. Medication name, dosage, frequency"
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-teal-500 transition-colors"
-            />
-          </div>
-
-          {/* Attach Diagnostic Report */}
-          <div className="p-5 rounded-2xl border border-slate-800 bg-slate-900/40 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Paperclip className="w-3.5 h-3.5 text-sky-400" />
-                <span>Attach Diagnostic File (Supabase Storage Reference)</span>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                ♂ 32 yrs
               </span>
-              <span className="text-[11px] text-slate-500">PDF, JPG, DICOM (Max 25MB)</span>
-            </div>
-            <div className="p-4 rounded-xl border border-dashed border-slate-800 bg-slate-950/60 text-center text-xs text-slate-400">
-              <span className="text-sky-400 font-semibold cursor-pointer">Click to upload diagnostic attachment</span> or drag files here
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                🩸 O+
+              </span>
             </div>
           </div>
 
-          {/* Conceptual Backend Process Notice */}
-          <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800/80 flex items-start gap-3 text-xs text-slate-400">
-            <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+          <div className="text-right text-xs text-slate-500 space-y-1">
+            <p className="flex items-center sm:justify-end gap-1 font-semibold text-slate-700">
+              <Building2 className="w-3.5 h-3.5" />
+              <span>City General Hospital</span>
+            </p>
+            <p className="flex items-center sm:justify-end gap-1">
+              <Stethoscope className="w-3.5 h-3.5" />
+              <span>Dr. Sharma</span>
+            </p>
+            <p className="flex items-center sm:justify-end gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Oct 24, 2023, 11:30 AM</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Clinical Form Box */}
+        <form onSubmit={handleSave} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          {/* Black Banner Bar */}
+          <div className="bg-[#111827] text-white px-6 py-3 text-xs font-bold uppercase tracking-wider">
+            CLINICAL DETAILS
+          </div>
+
+          <div className="p-6 sm:p-8 space-y-6">
+            {/* Chief Complaint */}
             <div>
-              Submitting this encounter commits the visit record to PostgreSQL, stores report metadata for Supabase Storage, logs an immutable audit event, and updates the patient&apos;s longitudinal timeline.
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Chief Complaint *
+              </label>
+              <input
+                type="text"
+                value={chiefComplaint}
+                onChange={(e) => setChiefComplaint(e.target.value)}
+                placeholder="Describe the primary reason for the visit..."
+                required
+                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+              />
+            </div>
+
+            {/* Diagnosis */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Diagnosis
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={diagnosis}
+                  onChange={(e) => setDiagnosis(e.target.value)}
+                  placeholder="Search ICD-10 codes or conditions..."
+                  className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                />
+              </div>
+            </div>
+
+            {/* Clinical Notes */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Clinical Notes
+              </label>
+              <textarea
+                rows={5}
+                value={clinicalNotes}
+                onChange={(e) => setClinicalNotes(e.target.value)}
+                placeholder="Detailed examination findings and observations..."
+                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+              />
             </div>
           </div>
 
-          {/* Submit Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-800">
-            <Link
-              href={`/staff/patient/${patientId}/timeline`}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-800 hover:bg-slate-900 text-slate-300 text-xs font-semibold text-center transition-colors"
-            >
-              Cancel
-            </Link>
+          {/* Bottom Actions Bar */}
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+              <span>This visit will become part of the patient&apos;s longitudinal record and the action will be logged.</span>
+            </div>
 
-            <button
-              type="submit"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-teal-500/20"
-            >
-              <Save className="w-4 h-4" />
-              <span>Save & Append to Longitudinal Record</span>
-            </button>
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                className="px-4 py-2 border border-[#006699] text-[#006699] hover:bg-sky-50 font-semibold text-xs rounded-lg transition-colors"
+              >
+                Save Draft
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-5 py-2 bg-black hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSaving ? "Saving..." : "Save Visit"}</span>
+              </button>
+            </div>
           </div>
         </form>
-      </main>
-    </div>
+      </div>
+    </StaffShell>
   );
 }

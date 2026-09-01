@@ -1,179 +1,252 @@
-import Link from "next/link";
-import {
-  ArrowLeft,
-  Calendar,
-  Building2,
-  User,
-  FileText,
-  Download,
-  FilePlus,
-  Pill,
-  CheckCircle2,
-} from "lucide-react";
-import { SAMPLE_PATIENT, SAMPLE_VISITS } from "@/lib/mock-data";
+"use client";
 
-export default async function PatientMedicalTimelineStaffPage(props: {
+import React, { use } from "react";
+import Link from "next/link";
+import { StaffShell } from "@/components/layout/staff-shell";
+import {
+  Stethoscope,
+  Microscope,
+  FileText,
+  AlertTriangle,
+  Plus,
+  Edit,
+  ExternalLink,
+  ChevronRight,
+} from "lucide-react";
+
+export default function StaffPatientTimelinePage({
+  params,
+}: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string }>;
 }) {
-  const params = await props.params;
-  const searchParams = await props.searchParams;
-  const patientId = params.id || SAMPLE_PATIENT.medibaseId;
-  const isSaved = searchParams?.saved === "true";
+  const resolvedParams = use(params);
+  const patientId = resolvedParams.id || "MB-102394";
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-teal-500 selection:text-white">
-      {/* Top Header */}
-      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md px-6 h-16 flex items-center justify-between sticky top-0 z-50">
-        <Link
-          href={`/staff/patient/${patientId}/overview`}
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Patient Overview</span>
-        </Link>
-        <div className="font-bold text-sm text-slate-200">
-          Authorized Longitudinal Record
+    <StaffShell activeNav="recent-patients">
+      <div className="space-y-6 max-w-5xl mx-auto">
+        {/* Patient Subheader Card */}
+        <div className="bg-white border-l-4 border-l-[#006699] border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-800 font-bold text-base flex items-center justify-center shrink-0">
+              RS
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-xl font-bold text-slate-900">Rahul Sharma</h1>
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600">
+                  {patientId}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                <span>32 yrs (M)</span>
+                <span>•</span>
+                <span>🩸 O+</span>
+                <span>•</span>
+                <span className="text-rose-600 font-semibold flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Penicillin Allergy
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <button className="px-3.5 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5">
+              <Edit className="w-3.5 h-3.5" />
+              <span>Edit Info</span>
+            </button>
+            <Link
+              href={`/staff/patient/${patientId}/new-visit`}
+              className="px-4 py-2 bg-black hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Visit</span>
+            </Link>
+          </div>
         </div>
-        <div className="w-20" />
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-8 w-full space-y-8">
-        {/* Saved feedback notice */}
-        {isSaved && (
-          <div className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/30 flex items-center gap-3 text-emerald-300 text-sm font-medium">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span>New clinical encounter has been appended to {SAMPLE_PATIENT.name}&apos;s longitudinal record and logged to the audit trail.</span>
-          </div>
-        )}
-
-        {/* Title & Top Action */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white">Clinical Medical Timeline</h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Cross-hospital longitudinal encounters for {SAMPLE_PATIENT.name} ({patientId}).
-            </p>
-          </div>
-
+        {/* Tab Navigation */}
+        <div className="border-b border-slate-200 flex items-center gap-8 text-sm font-semibold">
           <Link
-            href={`/staff/patient/${patientId}/new-visit`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition-colors shadow-lg shadow-teal-500/20 shrink-0"
+            href={`/staff/patient/${patientId}`}
+            className="pb-3 text-slate-500 hover:text-slate-900"
           >
-            <FilePlus className="w-4 h-4" />
-            <span>Record New Visit</span>
+            Overview
+          </Link>
+          <button className="pb-3 text-[#006699] border-b-2 border-[#006699]">
+            Timeline
+          </button>
+          <Link
+            href={`/staff/patient/${patientId}/upload-report`}
+            className="pb-3 text-slate-500 hover:text-slate-900"
+          >
+            Reports
+          </Link>
+          <Link
+            href="/staff/audit-log"
+            className="pb-3 text-slate-500 hover:text-slate-900"
+          >
+            Access Activity
           </Link>
         </div>
 
-        {/* Timeline Events List */}
-        <div className="space-y-6 relative before:absolute before:inset-0 before:left-4 sm:before:left-8 before:w-0.5 before:bg-slate-800">
-          {SAMPLE_VISITS.map((visit) => (
-            <div key={visit.id} className="relative pl-10 sm:pl-16 space-y-3">
-              {/* Bullet */}
-              <div className="absolute left-2.5 sm:left-6.5 top-5 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-teal-400 bg-slate-950 shadow-md shadow-teal-500/30" />
+        {/* Vertical Timeline */}
+        <div className="relative pl-12 space-y-8 before:absolute before:left-5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
+          {/* Timeline Node 1 */}
+          <div className="relative">
+            <div className="absolute -left-12 top-0 w-10 h-10 rounded-xl bg-sky-100 text-[#006699] flex items-center justify-center ring-4 ring-[#F8FAFC]">
+              <Stethoscope className="w-5 h-5" />
+            </div>
 
-              {/* Card */}
-              <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm space-y-5">
-                {/* Header info */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800/80">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-teal-950 text-teal-400 border border-teal-800">
-                        {visit.visitType} Consultation
-                      </span>
-                      <span className="text-xs text-slate-400 flex items-center gap-1 font-mono">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {visit.date}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-slate-400" />
-                      {visit.hospital}
-                    </h3>
-                  </div>
-
-                  <div className="text-left sm:text-right">
-                    <div className="text-xs font-semibold text-slate-200 flex items-center sm:justify-end gap-1.5">
-                      <User className="w-3.5 h-3.5 text-teal-400" />
-                      {visit.doctorName}
-                    </div>
-                    <div className="text-[11px] text-slate-400">{visit.doctorRole} • {visit.department}</div>
-                  </div>
-                </div>
-
-                {/* Complaint & Diagnosis */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                  <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Chief Complaint</span>
-                    <p className="text-slate-200">{visit.chiefComplaint}</p>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
-                    <span className="text-[11px] font-semibold text-teal-400 uppercase tracking-wider">Diagnosis</span>
-                    <p className="text-slate-200 font-semibold">{visit.diagnosis}</p>
-                  </div>
-                </div>
-
-                {/* Clinical Notes */}
-                <div className="space-y-1 text-xs">
-                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Clinical Examination Notes</span>
-                  <p className="text-slate-300 bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 leading-relaxed">
-                    {visit.clinicalNotes}
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Outpatient Consultation
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    📅 Oct 24, 2023 • City General Hospital
                   </p>
                 </div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+                  <span className="w-4 h-4 rounded-full bg-slate-800 text-white flex items-center justify-center text-[9px]">DS</span>
+                  <span>Dr. Sharma</span>
+                </div>
+              </div>
 
-                {/* Prescriptions */}
-                {visit.prescriptions.length > 0 && (
-                  <div className="space-y-1.5 text-xs">
-                    <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                      <Pill className="w-3.5 h-3.5" />
-                      <span>Prescriptions</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">
+                    CHIEF COMPLAINT
+                  </span>
+                  <p className="text-slate-800 mt-1 leading-relaxed">
+                    Routine check-up and medication review. Reports mild fatigue.
+                  </p>
+                </div>
+                <div>
+                  <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">
+                    DIAGNOSIS
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    <span className="px-2 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200 font-semibold">
+                      Type 2 Diabetes, controlled
                     </span>
-                    <div className="flex flex-wrap gap-2">
-                      {visit.prescriptions.map((p, pIdx) => (
-                        <div key={pIdx} className="px-3 py-1 rounded-lg bg-emerald-950/40 border border-emerald-800/50 text-emerald-300 font-medium">
-                          {p}
-                        </div>
-                      ))}
-                    </div>
+                    <span className="px-2 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200 font-semibold">
+                      Essential Hypertension
+                    </span>
                   </div>
-                )}
+                </div>
+              </div>
 
-                {/* Diagnostic Reports */}
-                {visit.reports.length > 0 && (
-                  <div className="space-y-2 pt-3 border-t border-slate-800/80">
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                      Attached Diagnostic Reports ({visit.reports.length})
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {visit.reports.map((rep) => (
-                        <div
-                          key={rep.id}
-                          className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="flex items-center gap-2.5 overflow-hidden">
-                            <div className="w-8 h-8 rounded-lg bg-teal-950 border border-teal-800 flex items-center justify-center text-teal-400 shrink-0">
-                              <FileText className="w-4 h-4" />
-                            </div>
-                            <div className="truncate">
-                              <div className="font-semibold text-slate-200 truncate">{rep.title}</div>
-                              <div className="text-[10px] text-slate-400">{rep.fileName} • {rep.fileSize}</div>
-                            </div>
-                          </div>
-                          <span className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
-                            <Download className="w-4 h-4" />
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
+                <div>
+                  <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">
+                    PRESCRIPTION
+                  </span>
+                  <div className="space-y-1 mt-1 text-slate-800 font-medium">
+                    <p className="flex items-center gap-1.5 text-sky-900">
+                      <span className="w-3.5 h-3.5 rounded-sm bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-[9px]">+</span>
+                      Metformin 500mg, 1 tablet twice daily
+                    </p>
+                    <p className="flex items-center gap-1.5 text-sky-900">
+                      <span className="w-3.5 h-3.5 rounded-sm bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-[9px]">+</span>
+                      Lisinopril 10mg, 1 tablet daily
+                    </p>
                   </div>
-                )}
+                </div>
+
+                <div>
+                  <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">
+                    INVESTIGATIONS ORDERED
+                  </span>
+                  <p className="text-slate-800 mt-1">
+                    HbA1c, Fasting Lipid Profile, Renal Function Panel
+                  </p>
+                </div>
+              </div>
+
+              {/* Attached Documents */}
+              <div className="bg-sky-50/60 border border-sky-100 rounded-lg p-3">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+                  ATTACHED DOCUMENTS
+                </span>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:border-slate-300 cursor-pointer">
+                  <FileText className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Lab_Results_Oct24.pdf</span>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button className="text-xs font-semibold text-[#006699] hover:underline">
+                  View Report
+                </button>
+                <button className="px-4 py-1.5 border border-[#006699] text-[#006699] hover:bg-sky-50 font-semibold text-xs rounded-lg transition-colors">
+                  View Visit Details
+                </button>
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* Timeline Node 2 */}
+          <div className="relative">
+            <div className="absolute -left-12 top-0 w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center ring-4 ring-[#F8FAFC]">
+              <Microscope className="w-5 h-5" />
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="text-base font-bold text-slate-900">
+                  Laboratory Diagnostics
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  📅 Jul 15, 2023 • Central City Labs
+                </p>
+              </div>
+
+              <div>
+                <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider block mb-2">
+                  RESULTS SUMMARY
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-lg text-xs">
+                  <div>
+                    <span className="text-slate-500 text-[11px]">HbA1c</span>
+                    <p className="text-base font-bold text-slate-900 mt-0.5">
+                      6.8% <span className="text-rose-600 text-xs">↑</span>
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[11px]">Fasting Glucose</span>
+                    <p className="text-base font-bold text-slate-900 mt-0.5">
+                      115 mg/dL
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[11px]">LDL Chol</span>
+                    <p className="text-base font-bold text-slate-900 mt-0.5">
+                      98 mg/dL
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-sky-50/60 border border-sky-100 rounded-lg p-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:border-slate-300 cursor-pointer">
+                  <FileText className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Comprehensive_Panel_Jul15.pdf</span>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button className="px-4 py-1.5 border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs rounded-lg transition-colors">
+                  View Full Results
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </StaffShell>
   );
 }

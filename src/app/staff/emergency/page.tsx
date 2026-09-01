@@ -1,112 +1,140 @@
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { StaffShell } from "@/components/layout/staff-shell";
 import {
-  ArrowLeft,
-  AlertOctagon,
-  ShieldAlert,
-  Flame,
-  ArrowRight,
+  Asterisk,
+  AlertTriangle,
+  User,
+  Building2,
+  Lock,
+  History,
 } from "lucide-react";
-import { SAMPLE_PATIENT } from "@/lib/mock-data";
 
 export default function EmergencyAccessPage() {
-  return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-rose-500 selection:text-white">
-      {/* Header */}
-      <header className="border-b border-rose-900/60 bg-slate-950/80 backdrop-blur-md px-6 h-16 flex items-center justify-between sticky top-0 z-50">
-        <Link
-          href="/staff/dashboard"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Exit Emergency Mode</span>
-        </Link>
-        <div className="flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-full bg-rose-950 text-rose-300 border border-rose-800 animate-pulse">
-          <AlertOctagon className="w-3.5 h-3.5" />
-          <span>BREAK-GLASS PROTOCOL</span>
-        </div>
-        <div className="w-20" />
-      </header>
+  const router = useRouter();
+  const [reason, setReason] = useState(
+    "Patient presented unconscious with no next-of-kin present. Immediate access to allergy and medication history required for emergency stabilization."
+  );
+  const [confirmed, setConfirmed] = useState(true);
+  const [isActivating, setIsActivating] = useState(false);
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 max-w-2xl mx-auto w-full">
-        <div className="w-full rounded-3xl border-2 border-rose-600/50 bg-gradient-to-b from-slate-900 via-slate-900/90 to-rose-950/20 p-7 sm:p-9 shadow-2xl shadow-rose-900/20 space-y-8">
-          {/* Card Top Notice */}
-          <div className="flex items-start gap-4 pb-6 border-b border-slate-800">
-            <div className="w-12 h-12 rounded-2xl bg-rose-950 border border-rose-700 flex items-center justify-center text-rose-400 shrink-0">
-              <Flame className="w-6 h-6" />
+  const handleActivate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirmed) return;
+    setIsActivating(true);
+    setTimeout(() => {
+      router.push("/staff/emergency/confirmation");
+    }, 600);
+  };
+
+  return (
+    <StaffShell activeNav="emergency">
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] py-6">
+        <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          {/* Top Red Highlight Line */}
+          <div className="h-1.5 bg-rose-500 w-full" />
+
+          <div className="p-8 sm:p-10 space-y-6">
+            {/* Top Red Asterisk Badge */}
+            <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+              <Asterisk className="w-6 h-6 stroke-[2.5]" />
             </div>
-            <div className="space-y-1">
-              <div className="text-xs font-bold text-rose-400 uppercase tracking-widest">
-                Emergency Care Override
-              </div>
-              <h1 className="text-2xl font-extrabold text-white">
-                Emergency Break-Glass Access
+
+            <div className="text-center">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                Emergency Access
               </h1>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Used strictly when a patient is unconscious, unresponsive, or experiencing life-threatening trauma and unable to provide direct consent.
+            </div>
+
+            {/* Red Alert Callout */}
+            <div className="bg-rose-50/70 border-l-4 border-l-rose-500 border border-rose-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <p className="text-xs font-semibold text-rose-800 leading-relaxed">
+                Use this pathway only when delaying access could put the patient at risk.
               </p>
             </div>
+
+            {/* Identity Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 bg-sky-50/50 border border-sky-100 rounded-xl space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  PATIENT IDENTITY
+                </span>
+                <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <User className="w-4 h-4 text-[#006699]" />
+                  <span>Rahul (MB-102394)</span>
+                </p>
+              </div>
+
+              <div className="p-4 bg-sky-50/50 border border-sky-100 rounded-xl space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  REQUESTING STAFF
+                </span>
+                <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-[#006699]" />
+                  <span>Dr. Sharma, City Hospital</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleActivate} className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Reason for emergency access *
+                </label>
+                <textarea
+                  rows={4}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g., Patient is unconscious and unable to provide normal authorization."
+                  required
+                  className="w-full p-4 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+
+              <label className="flex items-center gap-3 text-xs font-medium text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                  className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-4 h-4"
+                />
+                <span>I confirm this is a genuine emergency.</span>
+              </label>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Link
+                  href="/staff/dashboard"
+                  className="px-5 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-lg transition-colors"
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="submit"
+                  disabled={!confirmed || isActivating}
+                  className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-2 shadow"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>
+                    {isActivating ? "Activating..." : "Activate Emergency Access"}
+                  </span>
+                </button>
+              </div>
+            </form>
           </div>
 
-          {/* Form */}
-          <form action="/staff/emergency/critical-info" className="space-y-6 text-xs">
-            {/* Target Patient Identifier */}
-            <div className="space-y-2">
-              <label className="font-semibold uppercase tracking-wider text-slate-300">
-                Patient Identification (MediBase ID or QR Token)
-              </label>
-              <input
-                type="text"
-                name="patientId"
-                defaultValue={SAMPLE_PATIENT.medibaseId}
-                placeholder="e.g. MB-2026-89412"
-                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-sm focus:outline-none focus:border-rose-500 transition-colors"
-              />
-              <p className="text-[11px] text-slate-500">
-                Identified: <span className="text-slate-300 font-medium">{SAMPLE_PATIENT.name}</span> ({SAMPLE_PATIENT.gender}, Age {SAMPLE_PATIENT.age})
-              </p>
-            </div>
-
-            {/* Mandatory Clinical Justification */}
-            <div className="space-y-2">
-              <label className="font-semibold uppercase tracking-wider text-rose-300 flex items-center justify-between">
-                <span>Mandatory Clinical Justification</span>
-                <span className="text-rose-400 font-bold">* Required for Audit Trail</span>
-              </label>
-              <textarea
-                name="justification"
-                rows={3}
-                defaultValue="Patient admitted to Emergency Department following acute road traffic trauma. Unresponsive with low GCS. Immediate surgical triage and blood group / allergy verification required."
-                placeholder="Detail the urgent clinical emergency justifying consent bypass..."
-                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-rose-900/60 text-slate-200 text-xs focus:outline-none focus:border-rose-500 transition-colors resize-none"
-              />
-            </div>
-
-            {/* Legal / Audit Notice */}
-            <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-900/50 space-y-2 text-rose-200">
-              <div className="flex items-center gap-2 font-bold text-rose-300 text-xs">
-                <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>Legal Compliance & Audit Notice</span>
-              </div>
-              <p className="text-[11px] text-rose-200/80 leading-relaxed">
-                Initiating this break-glass protocol records an immutable audit log, triggers an immediate high-priority alert to the patient and hospital compliance officer, and grants a 12-hour emergency viewing window. Unauthorized use is subject to severe medical board sanctions.
-              </p>
-            </div>
-
-            {/* Submit CTA */}
-            <div className="pt-2">
-              <button
-                type="submit"
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-sm transition-all shadow-xl shadow-rose-600/30 hover:scale-[1.01]"
-              >
-                <AlertOctagon className="w-5 h-5" />
-                <span>Authorize Break-Glass & View Critical Emergency Data</span>
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </button>
-            </div>
-          </form>
+          {/* Bottom Audit Note */}
+          <div className="p-4 bg-sky-50/50 border-t border-slate-100 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+            <History className="w-3.5 h-3.5" />
+            <span>Emergency access will be recorded in the audit log.</span>
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </StaffShell>
   );
 }

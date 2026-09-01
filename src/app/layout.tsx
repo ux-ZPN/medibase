@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const sans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-sans",
+});
+
+const serif = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-serif",
 });
 
 export const metadata: Metadata = {
-  title: "MediBase — Secure Healthcare Record-Sharing Platform",
+  title: "MediBase — Secure Healthcare Platform",
   description:
-    "A secure healthcare record-sharing platform that enables authorized healthcare providers to access and contribute to a patient's longitudinal medical history.",
+    "A secure healthcare record-sharing platform enabling authorized healthcare providers and patients to manage longitudinal medical history.",
 };
 
 export default function RootLayout({
@@ -19,8 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="min-h-screen antialiased flex flex-col font-sans">
+    <html lang="en" className={`${sans.variable} ${serif.variable}`}>
+      <body className="min-h-screen antialiased flex flex-col font-sans bg-[#F8FAFC] text-slate-900">
         {children}
       </body>
     </html>

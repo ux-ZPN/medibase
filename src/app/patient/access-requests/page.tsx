@@ -1,150 +1,164 @@
-import Link from "next/link";
-import {
-  ArrowLeft,
-  ShieldAlert,
-  ShieldCheck,
-  XCircle,
-  Clock,
-  Building2,
-  ArrowRight,
-  CheckCircle2,
-} from "lucide-react";
-import { SAMPLE_ACCESS_REQUESTS } from "@/lib/mock-data";
+"use client";
 
-export default async function AccessRequestsPage(props: {
-  searchParams: Promise<{ status?: string }>;
-}) {
-  const searchParams = await props.searchParams;
-  const statusParam = searchParams?.status;
+import React, { useState } from "react";
+import Link from "next/link";
+import { PatientShell } from "@/components/layout/patient-shell";
+import { Clock, CheckCircle2, AlertCircle, Info, Shield } from "lucide-react";
+
+export default function PatientAccessRequestsPage() {
+  const [denied, setDenied] = useState<string[]>([]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-sky-500 selection:text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md px-6 h-16 flex items-center justify-between sticky top-0 z-50">
-        <Link
-          href="/patient/dashboard"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Dashboard</span>
-        </Link>
-        <div className="font-bold text-sm text-slate-200">
-          Access Requests & Consent
-        </div>
-        <div className="w-20" />
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-8 w-full space-y-8">
-        {/* Banner Feedback if redirected after approve/deny */}
-        {statusParam === "approved" && (
-          <div className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/30 flex items-center gap-3 text-emerald-300 text-sm font-medium">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span>Access granted successfully. The healthcare provider has been granted a 24-hour access window.</span>
-          </div>
-        )}
-
-        {statusParam === "denied" && (
-          <div className="p-4 rounded-xl border border-rose-500/40 bg-rose-950/30 flex items-center gap-3 text-rose-300 text-sm font-medium">
-            <XCircle className="w-5 h-5 text-rose-400 shrink-0" />
-            <span>Access request was denied. No medical records were shared.</span>
-          </div>
-        )}
-
+    <PatientShell activeNav="requests">
+      <div className="space-y-6">
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-extrabold text-white">Record Access Requests</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Review and grant permission to verified healthcare providers requesting temporary access to your longitudinal medical history.
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            Access Requests
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Review requests from healthcare providers before granting normal record access.
           </p>
         </div>
 
-        {/* Pending Requests Section */}
-        <div className="space-y-4">
-          <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4" />
-            <span>Pending Approvals Awaiting Your Action</span>
-          </h2>
-
-          <div className="space-y-4">
-            {SAMPLE_ACCESS_REQUESTS.filter((r) => r.status === "pending").map((req) => (
-              <div
-                key={req.id}
-                className="p-6 rounded-2xl border-2 border-amber-500/40 bg-slate-900/80 shadow-xl shadow-amber-500/5 space-y-4"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950">
-                        Pending Your Approval
-                      </span>
-                      <span className="text-xs text-amber-400 font-mono flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        {req.expiresIn}
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mt-1">{req.doctorName}</h3>
-                    <div className="text-xs text-slate-400 flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{req.hospital} • {req.department}</span>
-                    </div>
+        {/* Requests List */}
+        <div className="space-y-5">
+          {/* Card 1: Dr. Sharma (Pending) */}
+          {!denied.includes("sharma") && (
+            <div className="bg-white border-l-4 border-l-[#006699] border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      ACCESS REQUEST
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-[#006699] border border-sky-200">
+                      🕒 Pending
+                    </span>
                   </div>
-
-                  <Link
-                    href={`/patient/access-requests/${req.id}`}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm transition-all shadow-md shadow-amber-500/20"
-                  >
-                    <span>Review & Respond</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
+                  <h3 className="text-lg font-bold text-slate-900">Dr. Sharma</h3>
+                  <p className="text-xs text-slate-500">City Hospital</p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs space-y-1">
-                  <span className="text-slate-400 font-medium">Stated Clinical Purpose:</span>
-                  <p className="text-slate-200">{req.purpose}</p>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Link
+                    href="/patient/access-requests/REQ-101"
+                    className="px-5 py-2 bg-[#0F172A] hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors shadow"
+                  >
+                    Review Request
+                  </Link>
+                  <button
+                    onClick={() => setDenied([...denied, "sharma"])}
+                    className="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-lg transition-colors"
+                  >
+                    Deny
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Historical Requests */}
-        <div className="space-y-4 pt-6 border-t border-slate-800/80">
-          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-            Past Consent Decisions
-          </h2>
-
-          <div className="space-y-3">
-            {SAMPLE_ACCESS_REQUESTS.filter((r) => r.status !== "pending").map((req) => (
-              <div
-                key={req.id}
-                className="p-4 rounded-xl border border-slate-800 bg-slate-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-slate-200">{req.doctorName}</span>
-                    <span className="text-slate-400">• {req.hospital}</span>
+              {/* Details Box */}
+              <div className="bg-sky-50/50 border border-sky-100 rounded-xl p-4 space-y-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Purpose
+                    </span>
+                    <p className="text-slate-800 font-medium mt-0.5">Consultation</p>
                   </div>
-                  <div className="text-slate-400">{req.purpose} • Requested {req.requestedAt}</div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Requested Duration
+                    </span>
+                    <p className="text-slate-800 font-medium mt-0.5 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      30 minutes
+                    </p>
+                  </div>
                 </div>
 
                 <div>
-                  {req.status === "approved" ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-semibold">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      Approved
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Requested Information
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="px-2.5 py-1 rounded bg-white border border-slate-200 text-slate-800 font-medium text-[11px]">
+                      Medical history
                     </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-950 text-rose-400 border border-rose-800 font-semibold">
-                      <XCircle className="w-3.5 h-3.5" />
-                      Denied
+                    <span className="px-2.5 py-1 rounded bg-white border border-slate-200 text-slate-800 font-medium text-[11px]">
+                      Prescriptions
                     </span>
-                  )}
+                    <span className="px-2.5 py-1 rounded bg-white border border-slate-200 text-slate-800 font-medium text-[11px]">
+                      Diagnostic reports
+                    </span>
+                  </div>
                 </div>
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* Card 2: Dr. Anjali Rao (Approved) */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    ACCESS REQUEST
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    ● Approved
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Dr. Anjali Rao</h3>
+                <p className="text-xs text-slate-500">Metro Health Center</p>
+              </div>
+
+              <div className="text-xs text-slate-500">
+                <span className="block text-[10px] font-semibold text-slate-400 uppercase">Active until</span>
+                <span className="font-bold text-slate-800">Today, 5:00 PM</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-4 text-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Purpose
+              </span>
+              <p className="text-slate-800 font-medium mt-0.5">Follow-up</p>
+            </div>
+          </div>
+
+          {/* Card 3: Apollo Hospital (Expired) */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4 opacity-75">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    ACCESS REQUEST
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                    🕒 Expired
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Apollo Hospital</h3>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-4 text-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Purpose
+              </span>
+              <p className="text-slate-800 font-medium mt-0.5">Emergency Triage (History)</p>
+            </div>
           </div>
         </div>
-      </main>
-    </div>
+
+        {/* Info callout */}
+        <div className="bg-sky-50/60 border border-sky-100 rounded-xl p-4 flex items-center gap-3 text-xs text-slate-600">
+          <Info className="w-5 h-5 text-[#006699] shrink-0" />
+          <p>
+            Emergency access is handled through a separate controlled workflow.
+          </p>
+        </div>
+      </div>
+    </PatientShell>
   );
 }

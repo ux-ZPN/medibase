@@ -1,122 +1,180 @@
-import Link from "next/link";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  ArrowRight,
-  Key,
-} from "lucide-react";
-import { SAMPLE_PATIENT } from "@/lib/mock-data";
+"use client";
 
-export default async function PatientAccessAuthorizationPage(props: {
+import React, { use, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { StaffShell } from "@/components/layout/staff-shell";
+import {
+  ShieldAlert,
+  Eye,
+  CheckCircle2,
+  Stethoscope,
+  Building2,
+  FileSpreadsheet,
+  Send,
+  ArrowRight,
+} from "lucide-react";
+
+export default function PatientAuthorizePage({
+  params,
+}: {
   params: Promise<{ id: string }>;
 }) {
-  const params = await props.params;
-  const patientId = params.id;
+  const resolvedParams = use(params);
+  const patientId = resolvedParams.id || "MB-102394";
+  const router = useRouter();
+  const [requested, setRequested] = useState(false);
+
+  const handleRequest = () => {
+    setRequested(true);
+    setTimeout(() => {
+      router.push(`/staff/patient/${patientId}`);
+    }, 1200);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-teal-500 selection:text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md px-6 h-16 flex items-center justify-between sticky top-0 z-50">
-        <Link
-          href="/staff/dashboard"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Staff Dashboard</span>
-        </Link>
-        <div className="font-bold text-sm text-slate-200">
-          Access Authorization Gateway
+    <StaffShell activeNav="recent-patients">
+      <div className="space-y-6 max-w-5xl mx-auto">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+            Patient Access Authorization
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Review the request details to securely access protected health information.
+          </p>
         </div>
-        <div className="w-20" />
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 max-w-2xl mx-auto w-full">
-        <div className="w-full rounded-3xl border border-slate-800 bg-slate-900/80 backdrop-blur-md p-7 sm:p-9 shadow-2xl space-y-8">
-          {/* Top Status */}
-          <div className="flex items-center justify-between pb-6 border-b border-slate-800">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wider">
-                Step 2 of 3: Consent Verification
-              </span>
-              <h1 className="text-2xl font-bold text-white mt-2">
-                Patient Record Access Authorization
-              </h1>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-teal-950 border border-teal-800 flex items-center justify-center text-teal-400">
-              <Key className="w-6 h-6" />
-            </div>
-          </div>
-
-          {/* Authorization Contract Matrix */}
-          <div className="space-y-4 text-xs">
-            {/* Identified Patient */}
-            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
-              <span className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                Target Patient Identified
-              </span>
-              <div className="flex items-center justify-between">
-                <div className="text-base font-bold text-white">{SAMPLE_PATIENT.name}</div>
-                <div className="font-mono text-sky-400 font-bold">{patientId || SAMPLE_PATIENT.medibaseId}</div>
-              </div>
-              <p className="text-slate-400">
-                Age: {SAMPLE_PATIENT.age} ({SAMPLE_PATIENT.gender}) • Blood Group: {SAMPLE_PATIENT.bloodGroup}
-              </p>
-            </div>
-
-            {/* Requesting Clinician & Hospital */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
-                <span className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                  Attending Clinician
-                </span>
-                <div className="font-semibold text-slate-200">Dr. Sarah Jenkins, MD</div>
-                <div className="text-slate-400">Cardiology Specialist</div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
-                <span className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                  Healthcare Facility
-                </span>
-                <div className="font-semibold text-slate-200">Apollo Specialty Hospital</div>
-                <div className="text-slate-400">License #MED-CARD-89021</div>
-              </div>
-            </div>
-
-            {/* Purpose & Window */}
-            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                  Authorized Scope & Duration
-                </span>
-                <span className="text-teal-400 font-semibold">24-Hour Active Window</span>
-              </div>
-              <p className="text-slate-300">
-                View longitudinal medical encounters, diagnostic lab reports, and append new clinical consultation notes.
-              </p>
-            </div>
-
-            {/* Simulation Status */}
-            <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-800/60 flex items-center gap-3 text-emerald-300">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column (8 cols) */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Red Alert Callout */}
+            <div className="bg-sky-50/50 border-l-4 border-l-rose-600 border border-slate-200 rounded-xl p-5 flex items-start gap-4">
+              <ShieldAlert className="w-6 h-6 text-rose-600 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold text-white">Patient Consent Granted:</span> Patient approved access request via MediBase Patient Portal. Session token is active and ready.
+                <p className="text-xs font-bold text-rose-800 uppercase tracking-wider mb-1">
+                  AUTHORIZATION REQUIRED
+                </p>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Access to protected medical information requires appropriate authorization. Do not show full medical history on this screen. Patient must authorize this request via their MediBase app.
+                </p>
+              </div>
+            </div>
+
+            {/* Patient Subject Box */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-sky-100 text-sky-800 font-bold text-base flex items-center justify-center shrink-0">
+                RS
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Rahul Sharma</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  🪪 {patientId} • 📅 Age: 32
+                </p>
+              </div>
+            </div>
+
+            {/* Requesting Entity */}
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                REQUESTING ENTITY
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#006699] flex items-center justify-center shrink-0">
+                    <Stethoscope className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                      Provider
+                    </span>
+                    <span className="text-xs font-bold text-slate-900">Dr. Sharma</span>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#006699] flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                      Facility
+                    </span>
+                    <span className="text-xs font-bold text-slate-900">City Hospital</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#006699] flex items-center justify-center shrink-0">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    Purpose of Access
+                  </span>
+                  <span className="text-xs font-bold text-slate-900">Consultation</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Proceed CTA */}
-          <div className="pt-2">
-            <Link
-              href={`/staff/patient/${patientId || SAMPLE_PATIENT.medibaseId}/overview`}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-base transition-all shadow-xl shadow-teal-500/20 hover:scale-[1.01]"
-            >
-              <span>Open Patient Clinical Record Overview</span>
-              <ArrowRight className="w-5 h-5" />
-            </Link>
+          {/* Right Column (4 cols) */}
+          <div className="lg:col-span-4 space-y-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 text-slate-900 font-bold text-sm border-b border-slate-100 pb-3">
+                <Eye className="w-4 h-4 text-[#006699]" />
+                <span>Requested Scope</span>
+              </div>
+
+              <div className="space-y-3.5">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#006699] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">Medical Timeline</p>
+                    <p className="text-[11px] text-slate-500">Historical visits and procedures</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#006699] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">Prescriptions</p>
+                    <p className="text-[11px] text-slate-500">Active and past medications</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#006699] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">Diagnostic Reports</p>
+                    <p className="text-[11px] text-slate-500">Lab results and imaging</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2">
+              <button
+                onClick={handleRequest}
+                disabled={requested}
+                className="w-full py-3 px-4 bg-black hover:bg-slate-800 text-white font-semibold text-xs rounded-lg shadow transition-colors flex items-center justify-center gap-2"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>{requested ? "Sending Request..." : "Request Patient Access"}</span>
+              </button>
+
+              <Link
+                href={`/staff/patient/${patientId}`}
+                className="w-full py-2.5 px-4 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-lg transition-colors block text-center"
+              >
+                Cancel
+              </Link>
+            </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </StaffShell>
   );
 }

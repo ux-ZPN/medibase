@@ -68,6 +68,8 @@ export interface Database {
           profile_id: string;
           medibase_id: string;
           qr_code_token: string;
+          aadhaar_last4: string | null;
+          aadhaar_hash: string | null;
           date_of_birth: string | null;
           gender: string | null;
           blood_group: string | null;
@@ -83,6 +85,8 @@ export interface Database {
           profile_id: string;
           medibase_id: string;
           qr_code_token?: string;
+          aadhaar_last4?: string | null;
+          aadhaar_hash?: string | null;
           date_of_birth?: string | null;
           gender?: string | null;
           blood_group?: string | null;
@@ -98,6 +102,8 @@ export interface Database {
           profile_id?: string;
           medibase_id?: string;
           qr_code_token?: string;
+          aadhaar_last4?: string | null;
+          aadhaar_hash?: string | null;
           date_of_birth?: string | null;
           gender?: string | null;
           blood_group?: string | null;
@@ -159,6 +165,8 @@ export interface Database {
           role: StaffRole;
           license_number: string;
           department: string | null;
+          aadhaar_last4: string | null;
+          aadhaar_hash: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -170,6 +178,8 @@ export interface Database {
           role?: StaffRole;
           license_number: string;
           department?: string | null;
+          aadhaar_last4?: string | null;
+          aadhaar_hash?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -181,6 +191,8 @@ export interface Database {
           role?: StaffRole;
           license_number?: string;
           department?: string | null;
+          aadhaar_last4?: string | null;
+          aadhaar_hash?: string | null;
           is_active?: boolean;
           updated_at?: string;
         };

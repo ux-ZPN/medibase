@@ -1,121 +1,202 @@
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
+import { PatientShell } from "@/components/layout/patient-shell";
 import {
-  ArrowLeft,
-  Bell,
-  ShieldAlert,
-  AlertOctagon,
+  AlertTriangle,
+  KeyRound,
+  Shield,
   FileText,
-  ArrowRight,
+  Clock,
+  Download,
+  Check,
 } from "lucide-react";
-import { SAMPLE_NOTIFICATIONS } from "@/lib/mock-data";
 
 export default function PatientNotificationsPage() {
-  const unreadCount = SAMPLE_NOTIFICATIONS.filter((n) => !n.isRead).length;
+  const [filter, setFilter] = useState("all");
+
+  const filterOptions = [
+    { label: "All", key: "all" },
+    { label: "Access Requests", key: "requests" },
+    { label: "Medical Updates", key: "updates" },
+    { label: "Security", key: "security" },
+  ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-sky-500 selection:text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md px-6 h-16 flex items-center justify-between sticky top-0 z-50">
-        <Link
-          href="/patient/dashboard"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Dashboard</span>
-        </Link>
-        <div className="font-bold text-sm text-slate-200">
-          Notification Center
+    <PatientShell activeNav="notifications">
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            Notifications
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Manage your alerts, access requests, and medical updates.
+          </p>
         </div>
-        <div className="w-20" />
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-8 w-full space-y-8">
-        {/* Title */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold px-2.5 py-1 rounded-md bg-sky-950 text-sky-400 border border-sky-800 w-fit mb-2">
-              <Bell className="w-3.5 h-3.5" />
-              <span>Real-Time Patient Alerts</span>
-            </div>
-            <h1 className="text-3xl font-extrabold text-white">Notifications & Alerts</h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Instant alerts for incoming provider consent requests, emergency break-glass overrides, and clinical additions.
-            </p>
-          </div>
-
-          {unreadCount > 0 && (
-            <div className="px-3.5 py-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold shrink-0">
-              {unreadCount} Unread Notifications
-            </div>
-          )}
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          {filterOptions.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setFilter(opt.key)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                filter === opt.key
+                  ? "bg-[#0F172A] text-white"
+                  : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         {/* Notifications List */}
         <div className="space-y-4">
-          {SAMPLE_NOTIFICATIONS.map((item) => (
-            <div
-              key={item.id}
-              className={`p-6 rounded-2xl border backdrop-blur-sm space-y-3 transition-all ${
-                !item.isRead
-                  ? "bg-slate-900/80 border-sky-500/40 shadow-lg shadow-sky-500/5"
-                  : "bg-slate-900/40 border-slate-800 opacity-80"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                      item.type === "emergency_access_alert"
-                        ? "bg-rose-950 text-rose-400 border border-rose-800"
-                        : item.type === "access_request"
-                        ? "bg-amber-950 text-amber-400 border border-amber-800"
-                        : "bg-sky-950 text-sky-400 border border-sky-800"
-                    }`}
-                  >
-                    {item.type === "emergency_access_alert" ? (
-                      <AlertOctagon className="w-5 h-5" />
-                    ) : item.type === "access_request" ? (
-                      <ShieldAlert className="w-5 h-5" />
-                    ) : (
-                      <FileText className="w-5 h-5" />
-                    )}
+          {/* 1. Emergency Alert */}
+          {(filter === "all" || filter === "security") && (
+            <div className="bg-rose-50/70 border-l-4 border-l-rose-500 border border-rose-200 rounded-xl p-5 shadow-sm space-y-3">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded bg-rose-200/70 text-rose-800 font-bold text-[10px] uppercase">
+                      EMERGENCY ALERT
+                    </span>
+                    <span className="text-xs text-rose-700/80">45 minutes ago</span>
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-base text-white">{item.title}</h3>
-                      {!item.isRead && (
-                        <span className="w-2 h-2 rounded-full bg-sky-400" />
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
-                      {item.message}
-                    </p>
+                  <h3 className="text-base font-bold text-rose-950 mt-1">
+                    Emergency access to your record was used by Dr. Kumar.
+                  </h3>
+                  <p className="text-xs text-rose-800 mt-0.5 leading-relaxed">
+                    This action was logged automatically due to override protocols. Please review this access event.
+                  </p>
+
+                  <div className="pt-3">
+                    <Link
+                      href="/patient/access-history"
+                      className="inline-flex px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs rounded-lg transition-colors shadow-sm"
+                    >
+                      Review Event
+                    </Link>
                   </div>
                 </div>
-
-                <span className="text-[11px] text-slate-500 font-mono shrink-0">
-                  {item.timestamp}
-                </span>
               </div>
-
-              {/* Action Link if available */}
-              {item.actionUrl && (
-                <div className="pt-2 pl-13 flex justify-end">
-                  <Link
-                    href={item.actionUrl}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-400 hover:text-sky-300 transition-colors"
-                  >
-                    <span>{item.actionLabel || "View Details"}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              )}
             </div>
-          ))}
+          )}
+
+          {/* 2. Access Request */}
+          {(filter === "all" || filter === "requests") && (
+            <div className="bg-white border-l-4 border-l-[#006699] border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-sky-50 text-[#006699] flex items-center justify-center shrink-0 mt-0.5">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded bg-sky-50 text-sky-700 font-bold text-[10px] uppercase flex items-center gap-1">
+                      ACCESS REQUEST <span className="w-1.5 h-1.5 rounded-full bg-[#006699]"></span>
+                    </span>
+                    <span className="text-xs text-slate-400">1 hour ago</span>
+                  </div>
+
+                  <h3 className="text-base font-bold text-slate-900 mt-1">
+                    Dr. Sharma wants access to your medical history.
+                  </h3>
+
+                  <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 my-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">From</span>
+                      <span className="font-semibold text-slate-800">Dr. Sharma (City Hospital)</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Purpose</span>
+                      <span className="font-semibold text-slate-800">Consultation</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/patient/access-requests/REQ-101"
+                      className="px-4 py-2 bg-black hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors shadow"
+                    >
+                      Review Request
+                    </Link>
+                    <button className="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-lg transition-colors">
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Security Update */}
+          {(filter === "all" || filter === "security") && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold text-[10px] uppercase">
+                      SECURITY UPDATE
+                    </span>
+                    <span className="text-xs text-slate-400">2 hours ago</span>
+                  </div>
+
+                  <h3 className="text-base font-bold text-slate-900 mt-1">
+                    Your medical record was accessed by Dr. Patel at Metro Hospital.
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Viewed</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4. Reports */}
+          {(filter === "all" || filter === "updates") && (
+            <div className="bg-white border-l-4 border-l-slate-900 border border-slate-200 rounded-xl p-5 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-sky-50 text-[#006699] flex items-center justify-center shrink-0 mt-0.5">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded bg-sky-50 text-sky-700 font-bold text-[10px] uppercase flex items-center gap-1">
+                      REPORTS <span className="w-1.5 h-1.5 rounded-full bg-[#006699]"></span>
+                    </span>
+                    <span className="text-xs text-slate-400">Today, 9:15 AM</span>
+                  </div>
+
+                  <h3 className="text-base font-bold text-slate-900 mt-1">
+                    A new lab report has been uploaded by St. Jude Medical Center.
+                  </h3>
+
+                  <div className="pt-3">
+                    <Link
+                      href="/patient/timeline"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-lg transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>View Report</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </main>
-    </div>
+      </div>
+    </PatientShell>
   );
 }

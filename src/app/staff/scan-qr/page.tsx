@@ -1,84 +1,94 @@
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  QrCode,
-  Search,
-  Camera,
-  ArrowRight,
-} from "lucide-react";
-import { SAMPLE_PATIENT } from "@/lib/mock-data";
+import { useRouter } from "next/navigation";
+import { StaffShell } from "@/components/layout/staff-shell";
+import { QrCode, Keyboard, Lock, Plus } from "lucide-react";
 
-export default function ScanPatientQrPage() {
+export default function ScanQRPage() {
+  const router = useRouter();
+  const [scanning, setScanning] = useState(false);
+
+  const simulateScan = () => {
+    setScanning(true);
+    setTimeout(() => {
+      router.push("/staff/patient/MB-102394");
+    }, 1200);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-teal-500 selection:text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md px-6 h-16 flex items-center justify-between sticky top-0 z-50">
-        <Link
-          href="/staff/dashboard"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Staff Dashboard</span>
-        </Link>
-        <div className="font-bold text-sm text-slate-200">
-          QR Token Scanner
-        </div>
-        <div className="w-20" />
-      </header>
+    <StaffShell activeNav="scan-qr">
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+        <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden text-center">
+          {/* Top Blue Accent Line */}
+          <div className="h-1 bg-[#006699] w-full" />
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 max-w-xl mx-auto w-full space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Scan Patient QR Badge</h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-            Point camera at the patient&apos;s MediBase digital identity badge to read their identification token.
-          </p>
-        </div>
+          <div className="p-8 sm:p-10">
+            {/* Top QR Icon Badge */}
+            <div className="w-12 h-12 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-[#006699] mx-auto mb-4">
+              <QrCode className="w-6 h-6 stroke-[1.75]" />
+            </div>
 
-        {/* Scanner Viewfinder Box */}
-        <div className="w-full aspect-square max-w-sm rounded-3xl border-2 border-dashed border-teal-500/50 bg-slate-900/80 relative flex flex-col items-center justify-center p-6 shadow-2xl overflow-hidden">
-          {/* Animated Scanning Beam */}
-          <div className="absolute inset-x-8 top-12 h-1 bg-gradient-to-r from-transparent via-teal-400 to-transparent animate-pulse shadow-lg shadow-teal-500/50" />
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">
+              Scan Patient QR
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 mb-8 max-w-xs mx-auto">
+              Position the patient&apos;s MediBase QR inside the frame.
+            </p>
 
-          {/* Corner Guides */}
-          <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-teal-400 rounded-tl-lg" />
-          <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-teal-400 rounded-tr-lg" />
-          <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-teal-400 rounded-bl-lg" />
-          <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-teal-400 rounded-br-lg" />
+            {/* Viewfinder Frame */}
+            <div
+              onClick={simulateScan}
+              className="relative w-64 h-64 mx-auto bg-[#0F172A] rounded-xl flex items-center justify-center cursor-pointer group shadow-inner mb-6 overflow-hidden"
+              title="Click to simulate QR scan"
+            >
+              {/* Cyan Targeting Corner Brackets */}
+              <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-sky-400"></div>
+              <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-sky-400"></div>
+              <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-sky-400"></div>
+              <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-sky-400"></div>
 
-          <div className="w-20 h-20 rounded-2xl bg-teal-950/60 border border-teal-800/60 flex items-center justify-center text-teal-400 mb-4">
-            <Camera className="w-10 h-10" />
+              {/* Center crosshair */}
+              <div className="text-slate-600 group-hover:text-sky-400 transition-colors">
+                <Plus className="w-8 h-8 stroke-[1.5]" />
+              </div>
+
+              {scanning && (
+                <div className="absolute inset-0 bg-sky-500/20 backdrop-blur-xs flex items-center justify-center text-white text-xs font-bold">
+                  Reading QR Code...
+                </div>
+              )}
+            </div>
+
+            {/* OR Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-3 text-slate-400 font-semibold">OR</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 mb-3">Search by MediBase ID</p>
+
+            <Link
+              href="/staff/find-patient"
+              className="w-full py-2.5 px-4 border border-[#006699] text-[#006699] hover:bg-sky-50 font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <Keyboard className="w-4 h-4" />
+              <span>Search by ID</span>
+            </Link>
           </div>
 
-          <p className="text-xs font-semibold text-slate-300">Align QR badge within frame</p>
-          <span className="text-[11px] text-slate-500 mt-1">Camera active • Auto-detecting</span>
+          {/* Bottom Security Note */}
+          <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-600">
+            <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <span>Scanning identifies the patient. Medical history is retrieved only after authorization.</span>
+          </div>
         </div>
-
-        {/* Simulate Scan Trigger */}
-        <div className="w-full space-y-3">
-          <Link
-            href={`/staff/patient/${SAMPLE_PATIENT.medibaseId}/authorize`}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-teal-500/20 hover:scale-[1.01]"
-          >
-            <QrCode className="w-4 h-4" />
-            <span>Simulate QR Scan (Found: {SAMPLE_PATIENT.medibaseId})</span>
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </Link>
-
-          <Link
-            href="/staff/find-patient"
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-slate-800 hover:bg-slate-900 text-slate-300 text-xs font-semibold transition-colors"
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span>Search by MediBase ID instead</span>
-          </Link>
-        </div>
-
-        {/* Security Notice */}
-        <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/40 text-[11px] text-slate-400 text-center leading-relaxed">
-          The QR code serves exclusively as an identification token. Scanning forwards you to the authorization screen and does not bypass patient consent.
-        </div>
-      </main>
-    </div>
+      </div>
+    </StaffShell>
   );
 }

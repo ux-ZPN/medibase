@@ -1,173 +1,159 @@
+"use client";
+
+import React, { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { StaffShell } from "@/components/layout/staff-shell";
 import {
   ArrowLeft,
-  Upload,
+  UploadCloud,
+  Lock,
+  Calendar,
   FileText,
-  Info,
+  Shield,
 } from "lucide-react";
-import { SAMPLE_PATIENT } from "@/lib/mock-data";
 
-export default async function UploadMedicalReportPage(props: {
+export default function UploadReportPage({
+  params,
+}: {
   params: Promise<{ id: string }>;
 }) {
-  const params = await props.params;
-  const patientId = params.id || SAMPLE_PATIENT.medibaseId;
+  const resolvedParams = use(params);
+  const patientId = resolvedParams.id || "MB-102394";
+  const router = useRouter();
+
+  const [reportType, setReportType] = useState("Laboratory Diagnostics");
+  const [reportDate, setReportDate] = useState("2023-10-24");
+  const [description, setDescription] = useState("Complete Lipid Panel and HbA1c lab evaluation.");
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState("Lab_Results_Oct24.pdf");
+
+  const handleUpload = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUploading(true);
+    setTimeout(() => {
+      router.push(`/staff/patient/${patientId}/upload-success`);
+    }, 600);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-teal-500 selection:text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md px-6 h-16 flex items-center justify-between sticky top-0 z-50">
-        <Link
-          href={`/staff/patient/${patientId}/overview`}
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Patient Overview</span>
-        </Link>
-        <div className="font-bold text-sm text-slate-200">
-          Upload Diagnostic Report
-        </div>
-        <div className="w-20" />
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-3xl mx-auto px-4 py-8 w-full space-y-8">
-        {/* Title */}
-        <div className="border-b border-slate-800/80 pb-6">
-          <div className="flex items-center gap-2 text-xs font-semibold px-2.5 py-1 rounded-md bg-teal-950 text-teal-400 border border-teal-800 w-fit mb-2">
-            <Upload className="w-3.5 h-3.5" />
-            <span>Supabase Storage Integration</span>
-          </div>
-          <h1 className="text-3xl font-extrabold text-white">Upload Medical Report</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Attach diagnostic imaging, laboratory tests, or discharge summaries to {SAMPLE_PATIENT.name}&apos;s ({patientId}) longitudinal record.
-          </p>
-        </div>
-
-        {/* Upload Form */}
-        <form action={`/staff/patient/${patientId}/upload-success`} className="space-y-6">
-          {/* Patient Context Block */}
-          <div className="p-4 rounded-2xl border border-slate-800 bg-slate-900/60 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div>
-              <span className="text-slate-500 font-medium">Patient</span>
-              <div className="font-semibold text-slate-200 mt-0.5">{SAMPLE_PATIENT.name}</div>
+    <StaffShell activeNav="recent-patients">
+      <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+          {/* Header */}
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Link
+                href={`/staff/patient/${patientId}`}
+                className="text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                Upload Medical Report
+              </h1>
             </div>
-            <div>
-              <span className="text-slate-500 font-medium">Attending Provider</span>
-              <div className="font-semibold text-slate-200 mt-0.5">Dr. Sarah Jenkins, MD</div>
-            </div>
-            <div>
-              <span className="text-slate-500 font-medium">Hospital Facility</span>
-              <div className="font-semibold text-teal-400 mt-0.5">Apollo Specialty Hospital</div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 pl-8">
+              <span className="font-semibold text-slate-700">👤 Rahul Sharma ({patientId})</span>
+              <span>•</span>
+              <span>📅 Oct 24, 2023 - City General Hospital</span>
             </div>
           </div>
 
-          {/* Report Title */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-              Report Title / Document Name
-            </label>
-            <input
-              type="text"
-              name="reportTitle"
-              defaultValue="Transthoracic Echocardiogram (TTE) & Doppler"
-              placeholder="e.g. 12-Lead ECG, Complete Blood Count, Chest X-Ray"
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-teal-500 transition-colors"
-            />
-          </div>
+          <hr className="border-slate-100" />
 
-          {/* Report Category */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-              Report Classification Type
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { id: "lab", label: "Lab Report" },
-                { id: "imaging", label: "Imaging / X-Ray" },
-                { id: "discharge", label: "Discharge Summary" },
-                { id: "other", label: "Prescription / Other" },
-              ].map((cat, idx) => (
-                <label
-                  key={cat.id}
-                  className="flex items-center justify-center p-3 rounded-xl border border-slate-800 bg-slate-900/50 hover:border-teal-500 cursor-pointer text-xs font-semibold text-slate-200 transition-colors has-checked:border-teal-500 has-checked:bg-teal-950/40 has-checked:text-teal-300"
-                >
-                  <input
-                    type="radio"
-                    name="reportType"
-                    value={cat.label}
-                    defaultChecked={idx === 1}
-                    className="sr-only"
-                  />
-                  <span>{cat.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          {/* Upload Grid */}
+          <form onSubmit={handleUpload} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+              {/* Dropzone Area (7 cols) */}
+              <div className="md:col-span-7">
+                <div className="border-2 border-dashed border-slate-300 rounded-xl p-10 flex flex-col items-center justify-center text-center bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400 transition-colors cursor-pointer min-h-[280px]">
+                  <div className="w-14 h-14 rounded-full bg-sky-100 text-[#006699] flex items-center justify-center mb-4">
+                    <UploadCloud className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900 mb-1">
+                    Drag and drop your files here, or click to browse
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-4">
+                    Accepted formats: PDF, JPG, PNG (Max 25MB)
+                  </p>
 
-          {/* Clinical Findings Summary */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-              Diagnostic Summary & Key Findings
-            </label>
-            <textarea
-              name="findings"
-              rows={3}
-              defaultValue="Normal left ventricular size and systolic function. LVEF estimated at 62%. No significant valvular regurgitation or pericardial effusion."
-              placeholder="Enter critical findings or test values..."
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-teal-500 transition-colors resize-none"
-            />
-          </div>
-
-          {/* Drag & Drop File Upload Box */}
-          <div className="p-6 rounded-2xl border-2 border-dashed border-teal-500/40 bg-slate-900/40 space-y-4 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-teal-950 border border-teal-800 flex items-center justify-center text-teal-400 mx-auto">
-              <Upload className="w-6 h-6" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-bold text-sm text-slate-200">
-                Select Medical File to Upload
-              </h4>
-              <p className="text-xs text-slate-400">
-                Supports DICOM, PDF, PNG, JPG files up to 50MB
-              </p>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 max-w-sm mx-auto flex items-center justify-between text-xs text-slate-300">
-              <div className="flex items-center gap-2 truncate">
-                <FileText className="w-4 h-4 text-sky-400 shrink-0" />
-                <span className="truncate">echocardiogram_tte_2026.pdf</span>
+                  {selectedFile && (
+                    <div className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 flex items-center gap-2 shadow-sm">
+                      <FileText className="w-4 h-4 text-[#006699]" />
+                      <span>{selectedFile}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <span className="text-[11px] text-slate-500 shrink-0 font-mono">3.4 MB</span>
+
+              {/* Metadata Form Fields (5 cols) */}
+              <div className="md:col-span-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Report Type
+                  </label>
+                  <select
+                    value={reportType}
+                    onChange={(e) => setReportType(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                  >
+                    <option>Select type...</option>
+                    <option>Laboratory Diagnostics</option>
+                    <option>Radiology & Imaging</option>
+                    <option>Prescription Record</option>
+                    <option>Clinical Summary</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Report Date
+                  </label>
+                  <input
+                    type="date"
+                    value={reportDate}
+                    onChange={(e) => setReportDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Add any relevant notes..."
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Security & Audit Notice */}
-          <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800/80 flex items-start gap-3 text-xs text-slate-400">
-            <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-            <div>
-              Files are encrypted at rest and stored in private Supabase Storage buckets. Access is governed by PostgreSQL Row Level Security policies and recorded in the patient audit trail.
+            {/* Bottom Actions */}
+            <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <Shield className="w-4 h-4 text-[#006699] shrink-0" />
+                <span>
+                  Medical files are stored separately from structured patient data and are accessible only through authorized workflows.
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isUploading}
+                className="px-6 py-2.5 bg-black hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shrink-0 shadow"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>{isUploading ? "Uploading..." : "Upload Securely"}</span>
+              </button>
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-800">
-            <Link
-              href={`/staff/patient/${patientId}/overview`}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-800 hover:bg-slate-900 text-slate-300 text-xs font-semibold text-center transition-colors"
-            >
-              Cancel
-            </Link>
-
-            <button
-              type="submit"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-teal-500/20"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Upload & Append to Record</span>
-            </button>
-          </div>
-        </form>
-      </main>
-    </div>
+          </form>
+        </div>
+      </div>
+    </StaffShell>
   );
 }

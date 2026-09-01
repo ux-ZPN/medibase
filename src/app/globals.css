@@ -1,41 +1,28 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --primary: #0284c7;
-  --primary-foreground: #ffffff;
-  --secondary: #0f766e;
-  --secondary-foreground: #ffffff;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #e0f2fe;
-  --accent-foreground: #0369a1;
-  --border: #e2e8f0;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #090d16;
-    --foreground: #f8fafc;
-    --card: #0f172a;
-    --card-foreground: #f8fafc;
-    --primary: #38bdf8;
-    --primary-foreground: #04121d;
-    --secondary: #2dd4bf;
-    --secondary-foreground: #04121d;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --accent: #082f49;
-    --accent-foreground: #7dd3fc;
-    --border: #1e293b;
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --primary: #006699;
+    --primary-foreground: #ffffff;
+    --border: #e2e8f0;
   }
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-feature-settings: "rlig" 1, "calt" 1;
+  color: #0f172a;
+  background-color: #f8fafc;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
+
+.font-serif {
+  font-family: var(--font-serif), Georgia, serif;
+}
+
+.font-sans {
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
