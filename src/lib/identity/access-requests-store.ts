@@ -138,6 +138,45 @@ if (!globalStore.__medibase_audit_logs) {
 
 if (!globalStore.__medibase_clinical_encounters) {
   globalStore.__medibase_clinical_encounters = {
+    "1": [
+      {
+        id: "enc-101-1",
+        patient_id: "MB-100001",
+        date: "28 Aug 2026",
+        hospital_name: "City General Hospital",
+        department: "Pulmonology / Outpatient Clinic",
+        doctor_name: "Dr. Rahul Sharma",
+        doctor_role: "Senior Physician",
+        visit_type: "Outpatient Follow-up",
+        chief_complaint: "Cough with sputum production for 3 weeks.",
+        diagnoses: [
+          { code: "J20.9", name: "Acute Bronchitis", is_primary: true },
+        ],
+        prescriptions: [
+          {
+            name: "Azithromycin 500mg",
+            dosage: "500mg",
+            frequency: "Daily for 5 days",
+            instructions: "Take after meals",
+            is_active: true,
+          },
+        ],
+        vitals: {
+          bp: "124/80 mmHg",
+          heart_rate: 76,
+          glucose_mg_dl: 104,
+          spo2: 98,
+        },
+        investigations: [
+          { name: "Blood Test", status: "Completed", result: "Normal CBC" },
+          { name: "Chest X-Ray", status: "Completed", result: "Clear lung fields" },
+        ],
+        reports: [
+          { title: "Chest_XRay_Aug28.pdf", file_name: "Chest_XRay_Aug28.pdf" },
+        ],
+        clinical_notes: "Productive cough responding well to macrolide antibiotic. Penicillin allergy noted.",
+      },
+    ],
     "3": [
       {
         id: "enc-103-1",
@@ -423,6 +462,18 @@ export function denyAccessRequest(
   req.is_active = false;
   req.responded_at = new Date().toISOString();
 
+  // Deactivate any active grants for this patient/request upon denial
+  runtimeAccessGrants.forEach((g) => {
+    const grantIdx = extractPatientIndex(g.patient_id);
+    if (
+      g.patient_id === req.patient_id ||
+      g.access_request_id === req.id ||
+      (targetIdx !== null && grantIdx !== null && targetIdx === grantIdx)
+    ) {
+      g.is_active = false;
+    }
+  });
+
   // Log in audit trail
   runtimeAuditLogs.unshift({
     id: `audit-${Date.now()}`,
@@ -526,4 +577,44 @@ export function getPatientEncounters(patientIdentifier: string): ClinicalEncount
   const targetIdx = extractPatientIndex(patientIdentifier) ?? 3;
   const list = runtimeEncounters[String(targetIdx)] || runtimeEncounters["3"] || [];
   return list;
+}
+
+export function recordClinicalEncounter(
+  patientIdentifier: string,
+  encounterData: Omit<ClinicalEncounter, "id" | "date"> & { date?: string }
+): ClinicalEncounter {
+  const targetIdx = extractPatientIndex(patientIdentifier) ?? 3;
+  const key = String(targetIdx);
+  if (!runtimeEncounters[key]) {
+    runtimeEncounters[key] = [];
+  }
+
+  const newEnc: ClinicalEncounter = {
+    ...encounterData,
+    id: `enc-rec-${Date.now()}`,
+    date: encounterData.date || new Date().toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }),
+  };
+
+  // Add at TOP (newest first)
+  runtimeEncounters[key].unshift(newEnc);
+
+  // Also add to audit logs
+  runtimeAuditLogs.unshift({
+    id: `audit-${Date.now()}`,
+    timestamp: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }),
+    actor_name: encounterData.doctor_name,
+    actor_role: encounterData.doctor_role || "Doctor",
+    hospital_name: encounterData.hospital_name,
+    action: "visit_created",
+    action_label: `Recorded New Clinical Visit (${newEnc.visit_type})`,
+    purpose: "Clinical Encounter Documentation",
+    patient_id: patientIdentifier,
+    is_emergency: false,
+  });
+
+  return newEnc;
 }
