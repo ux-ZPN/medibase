@@ -99,7 +99,29 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 3.4 Auto-update Triggers
+-- 3.4 Fast Access Grant Verification Helper
+CREATE OR REPLACE FUNCTION public.has_active_access_grant(
+    target_patient_id UUID,
+    requesting_staff_id UUID DEFAULT NULL,
+    requesting_hospital_id UUID DEFAULT NULL
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.access_grants
+        WHERE patient_id = target_patient_id
+          AND is_active = true
+          AND valid_until > now()
+          AND (
+              (requesting_staff_id IS NOT NULL AND staff_id = requesting_staff_id) OR
+              (requesting_hospital_id IS NOT NULL AND hospital_id = requesting_hospital_id) OR
+              (requesting_staff_id IS NULL AND requesting_hospital_id IS NULL)
+          )
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- 3.5 Auto-update Triggers
 DROP TRIGGER IF EXISTS set_profiles_updated_at ON profiles;
 CREATE TRIGGER set_profiles_updated_at BEFORE UPDATE ON profiles
     FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
@@ -124,7 +146,7 @@ DROP TRIGGER IF EXISTS set_prescriptions_updated_at ON prescriptions;
 CREATE TRIGGER set_prescriptions_updated_at BEFORE UPDATE ON prescriptions
     FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
--- 3.5 Performance & Lookup Indexes
+-- 3.6 Performance & Lookup Indexes
 CREATE INDEX IF NOT EXISTS idx_patients_medibase_id ON patients(medibase_id);
 CREATE INDEX IF NOT EXISTS idx_patients_qr_code_token ON patients(qr_code_token);
 CREATE INDEX IF NOT EXISTS idx_patients_profile_id ON patients(profile_id);
@@ -138,6 +160,7 @@ CREATE INDEX IF NOT EXISTS idx_hospital_staff_aadhaar_hash ON hospital_staff(aad
 CREATE INDEX IF NOT EXISTS idx_access_requests_patient ON access_requests(patient_id, status);
 CREATE INDEX IF NOT EXISTS idx_access_requests_staff ON access_requests(requested_by_staff_id, status);
 CREATE INDEX IF NOT EXISTS idx_access_grants_lookup ON access_grants(patient_id, is_active, valid_until);
+CREATE INDEX IF NOT EXISTS idx_access_grants_active_check ON access_grants(patient_id, hospital_id, staff_id, is_active, valid_until);
 
 CREATE INDEX IF NOT EXISTS idx_encounters_patient ON encounters(patient_id, encounter_date DESC);
 CREATE INDEX IF NOT EXISTS idx_vitals_encounter ON vitals(encounter_id);

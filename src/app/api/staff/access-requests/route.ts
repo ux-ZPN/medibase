@@ -75,22 +75,29 @@ export async function POST(request: Request) {
     let targetPatientId = patientId;
 
     if (!targetPatientId && medibaseId) {
-      const { data: patient } = await supabase
-        .from("patients")
-        .select("id")
-        .eq("medibase_id", medibaseId.trim().toUpperCase())
-        .maybeSingle();
+      const cleanMbId = medibaseId.trim().toUpperCase();
+      try {
+        const { data: patient } = await supabase
+          .from("patients")
+          .select("id")
+          .eq("medibase_id", cleanMbId)
+          .maybeSingle();
 
-      if (patient) {
-        targetPatientId = patient.id;
-      } else {
-        // Fallback mapping for demo patient IDs
-        targetPatientId = `10000000-0000-0000-0000-${medibaseId.replace(/\D/g, "").padStart(12, "0").slice(-12)}`;
+        if (patient) {
+          targetPatientId = patient.id;
+        }
+      } catch {
+        // Fallback below
+      }
+
+      if (!targetPatientId) {
+        const num = parseInt(cleanMbId.replace(/\D/g, ""), 10);
+        const index = num >= 100000 ? num - 100000 : num;
+        targetPatientId = `10000000-0000-0000-0000-${String(index).padStart(12, "0")}`;
       }
     }
 
     // 4. Duplicate Request Prevention (Check if active pending request already exists)
-    // Check runtime store first for instant in-memory deduplication
     const existingRuntimeRequest = findPendingAccessRequest(
       targetPatientId,
       staffRecordId,
@@ -136,36 +143,52 @@ export async function POST(request: Request) {
     let createdRequestId = `req-${Date.now()}`;
 
     try {
-      const { data: newRequest } = await supabase
+      const { data: newRequest, error: insertError } = await supabase
         .from("access_requests")
         .insert({
           patient_id: targetPatientId,
           requested_by_staff_id: staffRecordId,
           hospital_id: hospitalRecordId,
+          reason,
+          access_type: accessType,
           status: "pending",
-          reason: reason,
-          access_type: accessType === "view_and_contribute" ? "view_and_contribute" : "view_only",
-          requested_at: nowIso,
           expires_at: expiresIso,
         })
-        .select("id, status, requested_at")
+        .select("id")
         .single();
 
-      if (newRequest) {
+      if (newRequest && !insertError) {
         createdRequestId = newRequest.id;
       }
+
+      // Record in audit log
+      await supabase.from("audit_logs").insert({
+        actor_profile_id: user?.id || staffRecordId,
+        actor_role: "doctor",
+        patient_id: targetPatientId,
+        hospital_id: hospitalRecordId,
+        action: "access_request_created",
+        resource_type: "access_request",
+        resource_id: createdRequestId,
+        metadata: {
+          reason,
+          access_type: accessType,
+          provider_name: providerName,
+          hospital_name: hospitalName,
+        },
+      });
     } catch {
-      // Non-blocking fallback
+      // Runtime fallback continues
     }
 
-    // Register in runtime store
+    // Save in runtime store for cross-route sync and deduplication
     addAccessRequest({
       id: createdRequestId,
       patient_id: targetPatientId,
       requested_by_staff_id: staffRecordId,
       hospital_id: hospitalRecordId,
-      doctor_name: providerName.startsWith("Dr.") ? providerName : `Dr. ${providerName}`,
-      doctor_role: "DOCTOR / Practitioner",
+      doctor_name: providerName,
+      doctor_role: "DOCTOR / Senior Physician",
       hospital_name: hospitalName,
       department: departmentName,
       purpose: reason,
@@ -176,36 +199,14 @@ export async function POST(request: Request) {
       is_active: true,
     });
 
-    // 6. Record Audit Log Event
-    try {
-      await supabase.from("audit_logs").insert({
-        actor_profile_id: user?.id || "demo-staff-0001",
-        actor_role: "doctor",
-        patient_id: targetPatientId,
-        hospital_id: hospitalRecordId,
-        action: "access_request_created",
-        resource_type: "access_request",
-        resource_id: createdRequestId,
-        metadata: {
-          request_id: createdRequestId,
-          provider_name: providerName,
-          hospital_name: hospitalName,
-          reason: reason,
-          access_type: accessType,
-        },
-      });
-    } catch {
-      // Audit log non-blocking
-    }
-
     return NextResponse.json({
       success: true,
       request_id: createdRequestId,
-      patient_id: targetPatientId,
       status: "pending",
+      expires_at: expiresIso,
       provider_name: providerName,
       hospital_name: hospitalName,
-      message: "Access request sent successfully. The patient must authorize this request from their MediBase app.",
+      message: "Access authorization request submitted successfully. Awaiting patient approval.",
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to create access request.";
