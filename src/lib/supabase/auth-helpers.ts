@@ -78,8 +78,8 @@ function getDemoCookieRole(): "patient" | "hospital_staff" | null {
 }
 
 /**
- * Fetches the user profile and role securely from the database.
- * Never relies on client-provided role parameters.
+ * Fetches the user profile, role, and hospital association securely from Supabase.
+ * Never relies on unauthenticated client-provided parameters.
  */
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   const demoRole = getDemoCookieRole();
@@ -101,7 +101,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   // If profile is missing (e.g. interrupted signup), initialize gracefully
   if (!profile) {
@@ -119,7 +119,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
         phone_number: phone,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (insertError || !newProfile) {
       if (demoRole === "patient") return DEFAULT_PATIENT_PROFILE;
@@ -138,13 +138,13 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
     avatar_url: profile.avatar_url,
   };
 
-  // 2. Fetch specific role relation based on DB role
+  // 2. Fetch Patient Data if role is patient
   if (profile.role === "patient") {
     let { data: patient } = await supabase
       .from("patients")
       .select("id, medibase_id, qr_code_token, aadhaar_last4, blood_group, occupation, height_cm, weight_kg, allergies, chronic_conditions, date_of_birth, gender")
       .eq("profile_id", profile.id)
-      .single();
+      .maybeSingle();
 
     // If patient record is missing, auto-provision unique MediBase ID
     if (!patient) {
@@ -158,7 +158,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
           aadhaar_hash: user.user_metadata?.aadhaar_hash || null,
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (newPatient) {
         patient = newPatient;
@@ -170,24 +170,62 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
     } else {
       result.patient_data = DEFAULT_PATIENT_PROFILE.patient_data;
     }
-  } else if (profile.role === "hospital_staff") {
-    const { data: staff } = await supabase
+  }
+
+  // 3. Fetch Hospital Staff Data if role is hospital_staff
+  else if (profile.role === "hospital_staff" || profile.role === "system_admin") {
+    let { data: staff } = await supabase
       .from("hospital_staff")
-      .select("id, hospital_id, role, department, license_number, aadhaar_last4, hospitals(name)")
+      .select("id, hospital_id, role, department, license_number, aadhaar_last4, hospitals(name, city)")
       .eq("profile_id", profile.id)
-      .single();
+      .maybeSingle();
+
+    // If hospital_staff record is missing, auto-link using metadata or default hospital
+    if (!staff) {
+      const metadata = user.user_metadata || {};
+      let hospitalId = metadata.hospital_id;
+
+      if (!hospitalId) {
+        const { data: firstHosp } = await supabase
+          .from("hospitals")
+          .select("id")
+          .limit(1)
+          .maybeSingle();
+        hospitalId = firstHosp?.id || "a0000000-0000-0000-0000-000000000001";
+      }
+
+      const { data: newStaff } = await supabase
+        .from("hospital_staff")
+        .upsert({
+          profile_id: profile.id,
+          hospital_id: hospitalId,
+          role: metadata.staff_role || "doctor",
+          license_number: metadata.license_number || `MED-REG-${profile.id.slice(0, 8).toUpperCase()}`,
+          department: metadata.department || "General Medicine",
+          aadhaar_last4: metadata.aadhaar_last4 || null,
+          is_active: true,
+        })
+        .select("id, hospital_id, role, department, license_number, aadhaar_last4, hospitals(name, city)")
+        .maybeSingle();
+
+      if (newStaff) {
+        staff = newStaff;
+      }
+    }
 
     if (staff) {
-      const hospitalName = Array.isArray(staff.hospitals)
-        ? (staff.hospitals[0] as { name?: string })?.name
-        : (staff.hospitals as { name?: string })?.name;
+      const hospitalObj = Array.isArray(staff.hospitals)
+        ? (staff.hospitals[0] as { name?: string; city?: string })
+        : (staff.hospitals as { name?: string; city?: string });
+
+      const hospitalName = hospitalObj?.name || user.user_metadata?.hospital_name || "City General Hospital";
 
       result.staff_data = {
         id: staff.id,
         hospital_id: staff.hospital_id,
-        hospital_name: hospitalName || "City General Hospital",
+        hospital_name: hospitalName,
         role: staff.role,
-        department: staff.department,
+        department: staff.department || "General Medicine",
         license_number: staff.license_number,
         aadhaar_last4: staff.aadhaar_last4,
       };
@@ -202,7 +240,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
 /**
  * Securely signs out the active user session and redirects to login.
  */
-export async function signOutUser(redirectPath = "/") {
+export async function signOutUser(redirectPath = "/staff/login") {
   if (typeof document !== "undefined") {
     document.cookie = "medibase_demo_role=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
   }

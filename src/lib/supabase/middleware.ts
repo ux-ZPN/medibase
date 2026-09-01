@@ -37,22 +37,28 @@ export async function updateSession(request: NextRequest) {
       },
     });
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    authenticatedUser = user;
+      authenticatedUser = user;
 
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
 
-      if (profile?.role) {
-        userRole = profile.role as "patient" | "hospital_staff" | "system_admin";
+        if (profile?.role) {
+          userRole = profile.role as "patient" | "hospital_staff" | "system_admin";
+        } else if (user.user_metadata?.role) {
+          userRole = user.user_metadata.role as "patient" | "hospital_staff" | "system_admin";
+        }
       }
+    } catch {
+      // Supabase connection fallback to demo role if active
     }
   }
 
@@ -89,13 +95,13 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Hospital staff trying to access patient routes
-    if (isPatientRoute && userRole === "hospital_staff") {
+    if (isPatientRoute && (userRole === "hospital_staff" || userRole === "system_admin")) {
       const url = request.nextUrl.clone();
       url.pathname = "/staff/dashboard";
       return NextResponse.redirect(url);
     }
 
-    // Redirect already authenticated users from login pages
+    // Redirect already authenticated users away from login pages
     if (isStaffLogin && (userRole === "hospital_staff" || userRole === "system_admin")) {
       const url = request.nextUrl.clone();
       url.pathname = "/staff/dashboard";

@@ -11,7 +11,14 @@ import QRCode from "qrcode";
 export interface PatientQRReference {
   type: "medibase_patient_ref";
   medibase_id: string;
-  qr_code_token: string;
+  qr_code_token?: string;
+}
+
+export interface QRValidationResult {
+  isValid: boolean;
+  medibaseId?: string;
+  qrCodeToken?: string;
+  error?: string;
 }
 
 export function buildPatientQRPayload(medibase_id: string, qr_code_token: string): string {
@@ -22,6 +29,56 @@ export function buildPatientQRPayload(medibase_id: string, qr_code_token: string
     qr_code_token: qr_code_token.trim(),
   };
   return JSON.stringify(payload);
+}
+
+export function parseAndValidatePatientQR(rawPayload: string): QRValidationResult {
+  if (!rawPayload || typeof rawPayload !== "string") {
+    return { isValid: false, error: "Empty QR code data detected." };
+  }
+
+  const trimmed = rawPayload.trim();
+
+  // 1. Try parsing JSON format
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      parsed.type === "medibase_patient_ref" &&
+      typeof parsed.medibase_id === "string" &&
+      /^MB-\w+$/i.test(parsed.medibase_id.trim())
+    ) {
+      return {
+        isValid: true,
+        medibaseId: parsed.medibase_id.trim().toUpperCase(),
+        qrCodeToken: typeof parsed.qr_code_token === "string" ? parsed.qr_code_token.trim() : undefined,
+      };
+    }
+  } catch {
+    // Not a JSON payload, proceed to string format check
+  }
+
+  // 2. Try raw MediBase ID format (e.g. MB-102394, MB-100001)
+  if (/^MB-\w+$/i.test(trimmed)) {
+    return {
+      isValid: true,
+      medibaseId: trimmed.toUpperCase(),
+    };
+  }
+
+  // 3. Try MediBase URL format (e.g. https://medibase.org/p/MB-102394)
+  const urlMatch = trimmed.match(/\/p\/(MB-\w+)/i);
+  if (urlMatch && urlMatch[1]) {
+    return {
+      isValid: true,
+      medibaseId: urlMatch[1].toUpperCase(),
+    };
+  }
+
+  return {
+    isValid: false,
+    error: "Invalid or unsupported QR code format. Please scan an authentic MediBase Patient ID card.",
+  };
 }
 
 export async function generatePatientQRCodeDataUrl(

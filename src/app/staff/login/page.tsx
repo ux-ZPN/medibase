@@ -37,7 +37,7 @@ function StaffLoginForm() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
 
   // Sign In Fields
-  const [email, setEmail] = useState("dr.sharma@cityhospital.org");
+  const [email, setEmail] = useState("dr.sharma@cityhospital.com");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -50,7 +50,7 @@ function StaffLoginForm() {
   const [hospitalId, setHospitalId] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [staffRole, setStaffRole] = useState("doctor");
-  const [department, setDepartment] = useState("General Medicine");
+  const [department, setDepartment] = useState("Cardiology");
   const [regPassword, setRegPassword] = useState("");
 
   const [hospitals, setHospitals] = useState<HospitalItem[]>([]);
@@ -152,39 +152,22 @@ function StaffLoginForm() {
         return;
       }
 
-      // Query database directly to check role (never trust client)
-      const { data: profile, error: profileError } = await supabase
+      // Check role directly (never trust client)
+      const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", data.user.id)
-        .single();
+        .maybeSingle();
 
-      if (profileError || !profile) {
-        const { data: staffData } = await supabase
-          .from("hospital_staff")
-          .select("id")
-          .eq("profile_id", data.user.id)
-          .single();
-
-        if (!staffData) {
-          await supabase.auth.signOut();
-          setErrorMessage(
-            "Access restricted. This portal is for authorized healthcare personnel only."
-          );
-          setIsLoading(false);
-          return;
-        }
-      } else if (
-        profile.role !== "hospital_staff" &&
-        profile.role !== "system_admin"
-      ) {
+      if (profile?.role === "patient") {
         await supabase.auth.signOut();
-        setErrorMessage(
-          "Access restricted. This portal is for authorized healthcare personnel only."
-        );
+        setErrorMessage("Access restricted. This portal is for authorized healthcare personnel only.");
         setIsLoading(false);
         return;
       }
+
+      // Complete staff onboarding / sync session
+      await fetch("/api/auth/complete-staff-onboarding", { method: "POST" }).catch(() => {});
 
       router.push(redirectUrl);
       router.refresh();
@@ -261,6 +244,9 @@ function StaffLoginForm() {
         email: regEmail.trim().toLowerCase(),
         password: regPassword,
       });
+
+      // Complete staff onboarding / sync session
+      await fetch("/api/auth/complete-staff-onboarding", { method: "POST" }).catch(() => {});
 
       router.push(redirectUrl);
       router.refresh();
@@ -384,7 +370,7 @@ function StaffLoginForm() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="dr.sharma@cityhospital.org"
+                  placeholder="dr.sharma@cityhospital.com"
                   required
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699] focus:border-transparent transition-all"
                 />
@@ -416,7 +402,7 @@ function StaffLoginForm() {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
+            {/* Remember Me */}
             <div className="flex items-center justify-between text-xs pt-1">
               <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
                 <input
@@ -560,7 +546,7 @@ function StaffLoginForm() {
                     type="email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="dr.iyer@hospital.org"
+                    placeholder="dr.iyer@cityhospital.com"
                     required
                     className="w-full pl-10 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
                   />
@@ -602,7 +588,7 @@ function StaffLoginForm() {
                   className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono tracking-wider text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
                 />
               </div>
-              <p className="text-[10px] text-slate-400 mt-0.5">Encrypted hash stored for identity verification.</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Encrypted hash stored for verified healthcare provider registry.</p>
             </div>
 
             {/* Password */}

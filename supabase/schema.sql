@@ -62,6 +62,39 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION is_hospital_staff(user_uuid UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM hospital_staff
+        WHERE profile_id = user_uuid AND is_active = true
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION is_patient(user_uuid UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM patients
+        WHERE profile_id = user_uuid
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION get_staff_hospital_id(user_uuid UUID)
+RETURNS UUID AS $$
+DECLARE
+    h_id UUID;
+BEGIN
+    SELECT hospital_id INTO h_id
+    FROM hospital_staff
+    WHERE profile_id = user_uuid AND is_active = true
+    LIMIT 1;
+    RETURN h_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ==============================================================================
 -- 3. CORE IDENTITY & DEMOGRAPHICS TABLES
 -- ==============================================================================
@@ -455,12 +488,7 @@ DROP POLICY IF EXISTS "Staff can view patient records" ON patients;
 CREATE POLICY "Staff can view patient records"
     ON patients FOR SELECT
     TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM hospital_staff hs
-            WHERE hs.profile_id = auth.uid()
-        )
-    );
+    USING (is_hospital_staff(auth.uid()));
 
 DROP POLICY IF EXISTS "Patients can update their own record" ON patients;
 CREATE POLICY "Patients can update their own record"
@@ -470,17 +498,30 @@ CREATE POLICY "Patients can update their own record"
 
 -- 8.3 Hospitals Policies
 DROP POLICY IF EXISTS "Hospitals are viewable by authenticated users" ON hospitals;
-CREATE POLICY "Hospitals are viewable by authenticated users"
-    ON hospitals FOR SELECT
-    TO authenticated
-    USING (true);
+DROP POLICY IF EXISTS "hospitals_select_all" ON hospitals;
+CREATE POLICY "hospitals_select_all" ON hospitals
+    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "hospitals_insert_authenticated" ON hospitals;
+CREATE POLICY "hospitals_insert_authenticated" ON hospitals
+    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 -- 8.4 Hospital Staff Policies
 DROP POLICY IF EXISTS "Staff profiles are viewable by authenticated users" ON hospital_staff;
-CREATE POLICY "Staff profiles are viewable by authenticated users"
-    ON hospital_staff FOR SELECT
-    TO authenticated
-    USING (true);
+DROP POLICY IF EXISTS "staff_select_own" ON hospital_staff;
+CREATE POLICY "staff_select_own" ON hospital_staff
+    FOR SELECT USING (
+        profile_id = auth.uid() OR
+        is_hospital_staff(auth.uid())
+    );
+
+DROP POLICY IF EXISTS "staff_insert_own" ON hospital_staff;
+CREATE POLICY "staff_insert_own" ON hospital_staff
+    FOR INSERT WITH CHECK (profile_id = auth.uid());
+
+DROP POLICY IF EXISTS "staff_update_own" ON hospital_staff;
+CREATE POLICY "staff_update_own" ON hospital_staff
+    FOR UPDATE USING (profile_id = auth.uid());
 
 -- 8.5 Emergency Contacts Policies
 DROP POLICY IF EXISTS "Patients can view their emergency contacts" ON emergency_contacts;

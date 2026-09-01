@@ -127,9 +127,9 @@ export async function POST(request: Request) {
         if (targetUserId) {
           const { data: hosp } = await supabase
             .from("hospitals")
-            .select("id")
+            .select("id, name")
             .limit(1)
-            .single();
+            .maybeSingle();
 
           const hospitalId = hosp?.id || "a0000000-0000-0000-0000-000000000001";
 

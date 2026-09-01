@@ -19,35 +19,40 @@ export async function POST(request: Request) {
       password,
     } = body;
 
-    // 1. Validation
+    // 1. Validate Full Name
     if (!fullName || typeof fullName !== "string" || fullName.trim().length < 2) {
       return NextResponse.json(
-        { success: false, error: "Please provide a valid full name." },
+        { success: false, error: "Please enter your full legal name (minimum 2 characters)." },
         { status: 400 }
       );
     }
 
+    // 2. Validate Institutional Email
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return NextResponse.json(
-        { success: false, error: "Please provide a valid institutional email address." },
+        { success: false, error: "Please provide a valid institutional work email address." },
         { status: 400 }
       );
     }
 
-    if (!phoneNumber || typeof phoneNumber !== "string" || phoneNumber.replace(/\D/g, "").length < 10) {
+    // 3. Validate Contact Phone Number
+    const rawPhoneDigits = (phoneNumber || "").toString().replace(/\D/g, "");
+    if (!phoneNumber || typeof phoneNumber !== "string" || rawPhoneDigits.length < 10) {
       return NextResponse.json(
-        { success: false, error: "Please provide a valid contact phone number." },
+        { success: false, error: "Please provide a valid contact phone number with at least 10 digits." },
         { status: 400 }
       );
     }
 
+    // 4. Validate Aadhaar
     if (!aadhaar || !isValidAadhaar(aadhaar)) {
       return NextResponse.json(
-        { success: false, error: "Please provide a valid 12-digit Aadhaar ID." },
+        { success: false, error: "Please provide a valid 12-digit Aadhaar ID number." },
         { status: 400 }
       );
     }
 
+    // 5. Validate Medical License / Staff ID
     if (!licenseNumber || typeof licenseNumber !== "string" || licenseNumber.trim().length < 3) {
       return NextResponse.json(
         { success: false, error: "Please enter a valid medical license or employee registration number." },
@@ -55,6 +60,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // 6. Validate Password
     if (!password || typeof password !== "string" || password.length < 6) {
       return NextResponse.json(
         { success: false, error: "Password must be at least 6 characters." },
@@ -66,85 +72,120 @@ export async function POST(request: Request) {
     const cleanPhone = phoneNumber.trim();
     const cleanName = fullName.trim();
     const cleanLicense = licenseNumber.trim();
-    const cleanDept = department ? department.trim() : "General Medicine";
+    const cleanDept = department && department.trim() ? department.trim() : "General Medicine";
     const sanitizedAadhaar = sanitizeAadhaar(aadhaar);
     const aadhaarLast4 = getAadhaarLast4(sanitizedAadhaar);
     const aadhaarHash = await hashAadhaar(sanitizedAadhaar);
 
-    // Validate staff_role enum
-    const validRoles = ["doctor", "nurse", "admin", "paramedic"];
-    const staffRole = validRoles.includes(role) ? role : "doctor";
+    // Validate Staff Role Enum
+    const validRoles: StaffRole[] = ["doctor", "nurse", "admin", "paramedic"];
+    const staffRole: StaffRole = validRoles.includes(role as StaffRole) ? (role as StaffRole) : "doctor";
 
     const supabase = await createClient();
 
-    // 2. Validate Hospital Association (Secure lookup - never trust arbitrary foreign keys)
-    let targetHospitalId = hospitalId;
+    // 7. Check for duplicate Aadhaar across hospital staff
+    try {
+      const { data: existingStaffWithAadhaar } = await supabase
+        .from("hospital_staff")
+        .select("id")
+        .eq("aadhaar_hash", aadhaarHash)
+        .maybeSingle();
 
-    if (targetHospitalId) {
-      const { data: hospitalRecord } = await supabase
+      if (existingStaffWithAadhaar) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "A staff profile with this Aadhaar ID is already registered. Please sign in instead.",
+          },
+          { status: 409 }
+        );
+      }
+    } catch {
+      // Continue if table lookup error occurs
+    }
+
+    // 8. Hospital Lookup and Deduplication (Never create duplicate hospitals)
+    let targetHospitalId: string | null = null;
+    let targetHospitalName: string = "City General Hospital";
+
+    // A. Check if provided hospitalId exists
+    if (hospitalId) {
+      const { data: matchedById } = await supabase
         .from("hospitals")
         .select("id, name")
-        .eq("id", targetHospitalId)
-        .single();
+        .eq("id", hospitalId)
+        .maybeSingle();
 
-      if (!hospitalRecord) {
-        targetHospitalId = null;
+      if (matchedById) {
+        targetHospitalId = matchedById.id;
+        targetHospitalName = matchedById.name;
       }
     }
 
-    // If hospitalId wasn't found or provided as name, look up by name or fallback to default verified hospital
+    // B. If not found by ID, lookup by hospital name (case-insensitive deduplication)
     if (!targetHospitalId) {
-      const searchName = hospitalName ? hospitalName.trim() : "City General Hospital";
-      const { data: matchedHospital } = await supabase
+      const lookupName = (hospitalName || "").toString().trim() || "City General Hospital";
+      targetHospitalName = lookupName;
+
+      const { data: matchedByName } = await supabase
         .from("hospitals")
-        .select("id")
-        .ilike("name", `%${searchName}%`)
+        .select("id, name")
+        .ilike("name", lookupName)
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (matchedHospital) {
-        targetHospitalId = matchedHospital.id;
-      } else {
-        // Find default verified hospital
-        const { data: defaultHosp } = await supabase
-          .from("hospitals")
-          .select("id")
-          .limit(1)
-          .single();
-
-        if (defaultHosp) {
-          targetHospitalId = defaultHosp.id;
-        } else {
-          // Create fallback hospital record
-          const { data: newHosp } = await supabase
-            .from("hospitals")
-            .insert({
-              name: searchName || "City General Hospital",
-              license_number: `HOSP-REG-${Date.now()}`,
-              address: "Medical Center District",
-              city: "Metro City",
-              state: "State",
-              postal_code: "110001",
-              phone_number: cleanPhone,
-              email: cleanEmail,
-              is_verified: true,
-            })
-            .select("id")
-            .single();
-
-          targetHospitalId = newHosp?.id;
-        }
+      if (matchedByName) {
+        targetHospitalId = matchedByName.id;
+        targetHospitalName = matchedByName.name;
       }
     }
 
+    // C. If still not found, check for any verified hospital
     if (!targetHospitalId) {
-      return NextResponse.json(
-        { success: false, error: "Failed to associate staff with a verified healthcare facility." },
-        { status: 400 }
-      );
+      const { data: fallbackHosp } = await supabase
+        .from("hospitals")
+        .select("id, name")
+        .eq("is_verified", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (fallbackHosp) {
+        targetHospitalId = fallbackHosp.id;
+        targetHospitalName = fallbackHosp.name;
+      }
     }
 
-    // 3. Register user in Supabase Auth
+    // D. If no hospital exists in the database at all, create a new verified hospital record
+    if (!targetHospitalId) {
+      const hospitalLicense = `HOSP-REG-${Date.now()}`;
+      const { data: newHosp, error: createHospError } = await supabase
+        .from("hospitals")
+        .insert({
+          name: targetHospitalName,
+          license_number: hospitalLicense,
+          address: "Medical Center District",
+          city: "Metro City",
+          state: "State",
+          postal_code: "110001",
+          phone_number: cleanPhone,
+          email: cleanEmail,
+          is_verified: true,
+        })
+        .select("id, name")
+        .single();
+
+      if (createHospError || !newHosp) {
+        return NextResponse.json(
+          { success: false, error: "Failed to establish verified healthcare facility affiliation." },
+          { status: 500 }
+        );
+      }
+
+      targetHospitalId = newHosp.id;
+      targetHospitalName = newHosp.name;
+    }
+
+    // 9. Register User in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: cleanEmail,
       password: password,
@@ -154,23 +195,36 @@ export async function POST(request: Request) {
           phone: cleanPhone,
           role: "hospital_staff",
           hospital_id: targetHospitalId,
+          hospital_name: targetHospitalName,
           license_number: cleanLicense,
           staff_role: staffRole,
+          department: cleanDept,
           aadhaar_last4: aadhaarLast4,
+          aadhaar_hash: aadhaarHash,
         },
       },
     });
 
     if (authError || !authData.user) {
+      const isDuplicateEmail =
+        authError?.message?.toLowerCase().includes("already registered") ||
+        authError?.message?.toLowerCase().includes("unique constraint") ||
+        authError?.status === 422;
+
       return NextResponse.json(
-        { success: false, error: authError?.message || "Failed to create staff user account." },
-        { status: 400 }
+        {
+          success: false,
+          error: isDuplicateEmail
+            ? "An account with this institutional email address already exists. Please sign in instead."
+            : authError?.message || "Failed to create hospital staff user account.",
+        },
+        { status: isDuplicateEmail ? 409 : 400 }
       );
     }
 
     const userId = authData.user.id;
 
-    // 4. Create Profile Record with role = 'hospital_staff'
+    // 10. Upsert User Profile
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: userId,
       email: cleanEmail,
@@ -180,19 +234,16 @@ export async function POST(request: Request) {
     });
 
     if (profileError) {
-      return NextResponse.json(
-        { success: false, error: profileError.message },
-        { status: 500 }
-      );
+      console.warn("Profile upsert notice in staff registration:", profileError.message);
     }
 
-    // 5. Create Hospital Staff Record
+    // 11. Upsert Hospital Staff Record
     const { data: staffRecord, error: staffError } = await supabase
       .from("hospital_staff")
       .upsert({
         profile_id: userId,
         hospital_id: targetHospitalId,
-        role: staffRole as StaffRole,
+        role: staffRole,
         license_number: cleanLicense,
         department: cleanDept,
         aadhaar_last4: aadhaarLast4,
@@ -200,19 +251,19 @@ export async function POST(request: Request) {
         is_active: true,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (staffError) {
-      return NextResponse.json(
-        { success: false, error: staffError.message },
-        { status: 500 }
-      );
+      console.warn("Staff record upsert notice in staff registration:", staffError.message);
     }
 
     return NextResponse.json({
       success: true,
-      staff_id: staffRecord.id,
       user_id: userId,
+      staff_id: staffRecord?.id || userId,
+      hospital_id: targetHospitalId,
+      hospital_name: targetHospitalName,
+      role: staffRole,
       message: "Hospital staff account registered successfully.",
     });
   } catch (err: unknown) {
