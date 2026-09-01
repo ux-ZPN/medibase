@@ -43,7 +43,41 @@ export interface StoredAuditLog {
   is_emergency: boolean;
 }
 
-function extractPatientIndex(idOrStr: string): number | null {
+export interface ClinicalEncounter {
+  id: string;
+  patient_id: string;
+  date: string;
+  hospital_name: string;
+  department: string;
+  doctor_name: string;
+  doctor_role: string;
+  visit_type: string;
+  chief_complaint: string;
+  diagnoses: Array<{ code?: string; name: string; is_primary?: boolean; is_new?: boolean }>;
+  prescriptions: Array<{
+    name: string;
+    dosage: string;
+    frequency: string;
+    instructions?: string;
+    is_active?: boolean;
+    is_new?: boolean;
+    discontinued?: boolean;
+    discontinuation_reason?: string;
+  }>;
+  vitals?: {
+    bp: string;
+    systolic?: number;
+    diastolic?: number;
+    heart_rate: number;
+    glucose_mg_dl?: number;
+    spo2?: number;
+  };
+  investigations?: Array<{ name: string; status: string; result?: string }>;
+  reports?: Array<{ title: string; file_name: string; file_url?: string }>;
+  clinical_notes: string;
+}
+
+export function extractPatientIndex(idOrStr: string): number | null {
   if (!idOrStr) return null;
   const digits = idOrStr.replace(/\D/g, "");
   if (!digits) return null;
@@ -57,6 +91,7 @@ const globalStore = globalThis as unknown as {
   __medibase_access_requests?: StoredAccessRequest[];
   __medibase_access_grants?: StoredAccessGrant[];
   __medibase_audit_logs?: StoredAuditLog[];
+  __medibase_clinical_encounters?: Record<string, ClinicalEncounter[]>;
 };
 
 if (!globalStore.__medibase_access_requests) {
@@ -76,39 +111,6 @@ if (!globalStore.__medibase_access_requests) {
       requested_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
       expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       is_active: true,
-    },
-    {
-      id: "req-seed-002",
-      patient_id: "MB-100001",
-      requested_by_staff_id: "b0000000-0000-0000-0000-000000000002",
-      hospital_id: "a0000000-0000-0000-0000-000000000002",
-      doctor_name: "Dr. Anjali Rao",
-      doctor_role: "DOCTOR / Practitioner",
-      hospital_name: "Metro Health Institute",
-      department: "General Medicine",
-      purpose: "Follow-up evaluation",
-      requested_scope: ["Medical History", "Lab Reports"],
-      status: "approved",
-      requested_at: new Date(Date.now() - 3600 * 1000 * 6).toISOString(),
-      expires_at: new Date(Date.now() + 3600 * 1000 * 18).toISOString(),
-      responded_at: new Date(Date.now() - 3600 * 1000 * 5.8).toISOString(),
-      is_active: false,
-    },
-    {
-      id: "req-seed-003",
-      patient_id: "MB-100001",
-      requested_by_staff_id: "b0000000-0000-0000-0000-000000000003",
-      hospital_id: "a0000000-0000-0000-0000-000000000003",
-      doctor_name: "Dr. Marcus Sterling",
-      doctor_role: "PHYSICIAN / Specialist",
-      hospital_name: "St. Mary's Hospital",
-      department: "Emergency Triage",
-      purpose: "Emergency Triage (History)",
-      requested_scope: ["Emergency Clinical Summary"],
-      status: "expired",
-      requested_at: new Date(Date.now() - 3600 * 1000 * 72).toISOString(),
-      expires_at: new Date(Date.now() - 3600 * 1000 * 48).toISOString(),
-      is_active: false,
     },
   ];
 }
@@ -131,36 +133,147 @@ if (!globalStore.__medibase_audit_logs) {
       patient_id: "MB-100001",
       is_emergency: false,
     },
-    {
-      id: "audit-seed-002",
-      timestamp: "31 Aug 2026, 11:12 AM",
-      actor_name: "Dr. Anjali Rao",
-      actor_role: "Consultant Physician",
-      hospital_name: "Metro Health Institute",
-      action: "Visit Added",
-      action_label: "Added visit encounter",
-      purpose: "Routine Follow-up",
-      patient_id: "MB-100001",
-      is_emergency: false,
-    },
-    {
-      id: "audit-seed-003",
-      timestamp: "31 Aug 2026, 2:31 PM",
-      actor_name: "Dr. Rajesh Kumar",
-      actor_role: "Emergency Attending",
-      hospital_name: "City General Hospital",
-      action: "Emergency Override",
-      action_label: "Break-Glass Emergency Access",
-      purpose: "Unconscious patient triage",
-      patient_id: "MB-100001",
-      is_emergency: true,
-    },
   ];
+}
+
+if (!globalStore.__medibase_clinical_encounters) {
+  globalStore.__medibase_clinical_encounters = {
+    "3": [
+      {
+        id: "enc-103-1",
+        patient_id: "MB-100003",
+        date: "24 Oct 2023",
+        hospital_name: "City General Hospital",
+        department: "Cardiology / Outpatient Clinic",
+        doctor_name: "Dr. Rahul Sharma",
+        doctor_role: "Senior Interventional Cardiologist",
+        visit_type: "Outpatient Follow-up",
+        chief_complaint: "Routine check-up, blood pressure review, and mild exertional fatigue.",
+        diagnoses: [
+          { code: "E11.9", name: "Type 2 Diabetes", is_primary: false, is_new: true },
+          { code: "I10", name: "Essential Hypertension", is_primary: true, is_new: false },
+        ],
+        prescriptions: [
+          {
+            name: "Metformin 500mg",
+            dosage: "500mg",
+            frequency: "Twice daily with meals",
+            instructions: "Take with food",
+            is_active: true,
+            is_new: true,
+          },
+          {
+            name: "Lisinopril 10mg",
+            dosage: "10mg",
+            frequency: "Daily",
+            instructions: "Discontinued due to improved blood pressure baseline",
+            is_active: false,
+            discontinued: true,
+            discontinuation_reason: "Discontinued due to improved blood pressure",
+          },
+        ],
+        vitals: {
+          bp: "128/82 mmHg",
+          systolic: 128,
+          diastolic: 82,
+          heart_rate: 72,
+          glucose_mg_dl: 145,
+          spo2: 98,
+        },
+        investigations: [
+          { name: "Lipid Profile", status: "Results pending", result: "In processing" },
+          { name: "HbA1c", status: "Completed", result: "7.2%" },
+        ],
+        reports: [
+          { title: "Lipid_Profile_Oct24.pdf", file_name: "Lipid_Profile_Oct24.pdf" },
+          { title: "ECG_Resting_Oct24.pdf", file_name: "ECG_Resting_Oct24.pdf" },
+        ],
+        clinical_notes: "Blood glucose moderately elevated (145 mg/dL). Commenced Metformin 500mg BD. Discontinued Lisinopril 10mg as BP is well managed.",
+      },
+      {
+        id: "enc-103-2",
+        patient_id: "MB-100003",
+        date: "12 Oct 2023",
+        hospital_name: "City General Hospital",
+        department: "Internal Medicine",
+        doctor_name: "Dr. Rahul Sharma",
+        doctor_role: "Senior Physician",
+        visit_type: "Routine Checkup",
+        chief_complaint: "Routine blood pressure screening and baseline investigation.",
+        diagnoses: [
+          { code: "I10", name: "Essential Hypertension", is_primary: true, is_new: false },
+          { code: "J30.1", name: "Seasonal Allergic Rhinitis", is_primary: false, is_new: false },
+        ],
+        prescriptions: [
+          {
+            name: "Lisinopril 10mg",
+            dosage: "10mg",
+            frequency: "Once daily in the morning",
+            instructions: "Take with water",
+            is_active: true,
+            is_new: false,
+          },
+          {
+            name: "Cetirizine 10mg",
+            dosage: "10mg",
+            frequency: "As needed at bedtime",
+            instructions: "For allergic symptoms",
+            is_active: true,
+            is_new: false,
+          },
+        ],
+        vitals: {
+          bp: "138/88 mmHg",
+          systolic: 138,
+          diastolic: 88,
+          heart_rate: 76,
+          glucose_mg_dl: 110,
+          spo2: 99,
+        },
+        investigations: [
+          { name: "Fasting Blood Glucose", status: "Completed", result: "110 mg/dL" },
+          { name: "CBC Panel", status: "Completed", result: "Normal" },
+        ],
+        reports: [
+          { title: "Baseline_Lab_Oct12.pdf", file_name: "Baseline_Lab_Oct12.pdf" },
+        ],
+        clinical_notes: "Baseline visit. BP slightly elevated at 138/88 mmHg. Advised dietary sodium restriction and lifestyle adjustments.",
+      },
+      {
+        id: "enc-103-3",
+        patient_id: "MB-100003",
+        date: "15 Jul 2023",
+        hospital_name: "Metro Health Institute",
+        department: "Diagnostics Laboratory",
+        doctor_name: "Dr. Anjali Rao",
+        doctor_role: "Consultant Pathologist",
+        visit_type: "Diagnostic Review",
+        chief_complaint: "Periodic metabolic and wellness panel.",
+        diagnoses: [
+          { code: "Z00.00", name: "General Adult Medical Examination", is_primary: true },
+        ],
+        prescriptions: [],
+        vitals: {
+          bp: "120/80 mmHg",
+          heart_rate: 70,
+          glucose_mg_dl: 98,
+        },
+        investigations: [
+          { name: "Comprehensive Metabolic Panel", status: "Completed", result: "Unremarkable" },
+        ],
+        reports: [
+          { title: "Metabolic_Panel_Jul15.pdf", file_name: "Metabolic_Panel_Jul15.pdf" },
+        ],
+        clinical_notes: "Routine annual wellness screening. All laboratory parameters within normal physiological limits.",
+      },
+    ],
+  };
 }
 
 const runtimeAccessRequests = globalStore.__medibase_access_requests!;
 const runtimeAccessGrants = globalStore.__medibase_access_grants!;
 const runtimeAuditLogs = globalStore.__medibase_audit_logs!;
+const runtimeEncounters = globalStore.__medibase_clinical_encounters!;
 
 export function findPendingAccessRequest(
   patientId: string,
@@ -407,4 +520,10 @@ export function getPatientAccessHistory(patientId: string): StoredAuditLog[] {
       patientId.includes(a.patient_id)
     );
   });
+}
+
+export function getPatientEncounters(patientIdentifier: string): ClinicalEncounter[] {
+  const targetIdx = extractPatientIndex(patientIdentifier) ?? 3;
+  const list = runtimeEncounters[String(targetIdx)] || runtimeEncounters["3"] || [];
+  return list;
 }
