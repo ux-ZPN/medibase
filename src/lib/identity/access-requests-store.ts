@@ -45,6 +45,21 @@ export interface StoredEmergencyAccess {
   is_active: boolean;
 }
 
+export interface StoredNotification {
+  id: string;
+  recipient_type: "patient" | "staff";
+  recipient_id: string; // Patient ID or Staff Profile ID
+  title: string;
+  message: string;
+  type: "access_request" | "access_granted" | "access_denied" | "emergency_access" | "record_updated" | "security_alert";
+  category: "requests" | "updates" | "security";
+  reference_id?: string;
+  action_url?: string;
+  is_read: boolean;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface StoredAuditLog {
   id: string;
   timestamp: string;
@@ -127,6 +142,7 @@ const globalStore = globalThis as unknown as {
   __medibase_access_requests?: StoredAccessRequest[];
   __medibase_access_grants?: StoredAccessGrant[];
   __medibase_emergency_access?: StoredEmergencyAccess[];
+  __medibase_notifications?: StoredNotification[];
   __medibase_audit_logs?: StoredAuditLog[];
   __medibase_clinical_encounters?: Record<string, ClinicalEncounter[]>;
   __medibase_medical_reports?: StoredMedicalReport[];
@@ -159,6 +175,48 @@ if (!globalStore.__medibase_access_grants) {
 
 if (!globalStore.__medibase_emergency_access) {
   globalStore.__medibase_emergency_access = [];
+}
+
+if (!globalStore.__medibase_notifications) {
+  globalStore.__medibase_notifications = [
+    {
+      id: "notif-seed-001",
+      recipient_type: "patient",
+      recipient_id: "MB-100001",
+      title: "New Access Request",
+      message: "Dr. Rahul Sharma from City General Hospital requested access to your medical history for Consultation.",
+      type: "access_request",
+      category: "requests",
+      reference_id: "req-seed-001",
+      action_url: "/patient/access-requests/req-seed-001",
+      is_read: false,
+      created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "notif-seed-002",
+      recipient_type: "patient",
+      recipient_id: "MB-100001",
+      title: "Security Update",
+      message: "Your medical record was viewed by Dr. Rahul Sharma at City General Hospital.",
+      type: "security_alert",
+      category: "security",
+      action_url: "/patient/access-history",
+      is_read: true,
+      created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "notif-seed-003",
+      recipient_type: "patient",
+      recipient_id: "MB-100001",
+      title: "New Diagnostic Report",
+      message: "A new lab report (Chest_XRay_Aug28.pdf) has been attached to your medical timeline.",
+      type: "record_updated",
+      category: "updates",
+      action_url: "/patient/timeline",
+      is_read: false,
+      created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    },
+  ];
 }
 
 if (!globalStore.__medibase_audit_logs) {
@@ -295,55 +353,6 @@ if (!globalStore.__medibase_clinical_encounters) {
         ],
         clinical_notes: "Blood glucose moderately elevated (145 mg/dL). Commenced Metformin 500mg BD. Discontinued Lisinopril 10mg as BP is well managed.",
       },
-      {
-        id: "enc-103-2",
-        patient_id: "MB-100003",
-        date: "12 Oct 2023",
-        hospital_name: "City General Hospital",
-        department: "Internal Medicine",
-        doctor_name: "Dr. Rahul Sharma",
-        doctor_role: "Senior Physician",
-        visit_type: "Routine Checkup",
-        chief_complaint: "Routine blood pressure screening and baseline investigation.",
-        diagnoses: [
-          { code: "I10", name: "Essential Hypertension", is_primary: true, is_new: false },
-          { code: "J30.1", name: "Seasonal Allergic Rhinitis", is_primary: false, is_new: false },
-        ],
-        prescriptions: [
-          {
-            name: "Lisinopril 10mg",
-            dosage: "10mg",
-            frequency: "Once daily in the morning",
-            instructions: "Take with water",
-            is_active: true,
-            is_new: false,
-          },
-          {
-            name: "Cetirizine 10mg",
-            dosage: "10mg",
-            frequency: "As needed at bedtime",
-            instructions: "For allergic symptoms",
-            is_active: true,
-            is_new: false,
-          },
-        ],
-        vitals: {
-          bp: "138/88 mmHg",
-          systolic: 138,
-          diastolic: 88,
-          heart_rate: 76,
-          glucose_mg_dl: 110,
-          spo2: 99,
-        },
-        investigations: [
-          { name: "Fasting Blood Glucose", status: "Completed", result: "110 mg/dL" },
-          { name: "CBC Panel", status: "Completed", result: "Normal" },
-        ],
-        reports: [
-          { title: "Baseline_Lab_Oct12.pdf", file_name: "Baseline_Lab_Oct12.pdf" },
-        ],
-        clinical_notes: "Baseline visit. BP slightly elevated at 138/88 mmHg. Advised dietary sodium restriction and lifestyle adjustments.",
-      },
     ],
   };
 }
@@ -351,9 +360,101 @@ if (!globalStore.__medibase_clinical_encounters) {
 const runtimeAccessRequests = globalStore.__medibase_access_requests!;
 const runtimeAccessGrants = globalStore.__medibase_access_grants!;
 const runtimeEmergencyAccess = globalStore.__medibase_emergency_access!;
+const runtimeNotifications = globalStore.__medibase_notifications!;
 const runtimeAuditLogs = globalStore.__medibase_audit_logs!;
 const runtimeEncounters = globalStore.__medibase_clinical_encounters!;
 const runtimeMedicalReports = globalStore.__medibase_medical_reports!;
+
+export function createNotification(notif: Omit<StoredNotification, "id" | "created_at">): StoredNotification {
+  const newNotif: StoredNotification = {
+    ...notif,
+    id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    created_at: new Date().toISOString(),
+  };
+  runtimeNotifications.unshift(newNotif);
+  return newNotif;
+}
+
+export function getPatientNotifications(patientId: string, categoryFilter?: string): StoredNotification[] {
+  const targetIdx = extractPatientIndex(patientId);
+
+  return runtimeNotifications.filter((n) => {
+    if (n.recipient_type !== "patient") return false;
+
+    const nIdx = extractPatientIndex(n.recipient_id);
+    const matchesPatient =
+      patientId === "demo-patient-rec-0001" ||
+      patientId === "MB-100001" ||
+      n.recipient_id === patientId ||
+      (targetIdx !== null && nIdx !== null && targetIdx === nIdx) ||
+      n.recipient_id.includes(patientId) ||
+      patientId.includes(n.recipient_id);
+
+    if (!matchesPatient) return false;
+
+    if (categoryFilter && categoryFilter !== "all") {
+      if (n.category !== categoryFilter) return false;
+    }
+
+    return true;
+  });
+}
+
+export function getStaffNotifications(staffId: string): StoredNotification[] {
+  return runtimeNotifications.filter((n) => {
+    if (n.recipient_type !== "staff") return false;
+    return (
+      n.recipient_id === staffId ||
+      n.recipient_id === "b0000000-0000-0000-0000-000000000001" ||
+      staffId === "b0000000-0000-0000-0000-000000000001"
+    );
+  });
+}
+
+export function markNotificationRead(notifId: string, callerRecipientId: string): boolean {
+  const targetIdx = extractPatientIndex(callerRecipientId);
+  const notif = runtimeNotifications.find((n) => {
+    if (n.id !== notifId) return false;
+
+    const nIdx = extractPatientIndex(n.recipient_id);
+    const isOwner =
+      callerRecipientId === "demo-patient-rec-0001" ||
+      callerRecipientId === "MB-100001" ||
+      callerRecipientId === "b0000000-0000-0000-0000-000000000001" ||
+      n.recipient_id === callerRecipientId ||
+      (targetIdx !== null && nIdx !== null && targetIdx === nIdx);
+
+    return isOwner;
+  });
+
+  if (notif) {
+    notif.is_read = true;
+    return true;
+  }
+  return false;
+}
+
+export function markAllNotificationsRead(callerRecipientId: string): number {
+  const targetIdx = extractPatientIndex(callerRecipientId);
+  let updatedCount = 0;
+
+  runtimeNotifications.forEach((n) => {
+    const nIdx = extractPatientIndex(n.recipient_id);
+    const isOwner =
+      callerRecipientId === "demo-patient-rec-0001" ||
+      callerRecipientId === "MB-100001" ||
+      callerRecipientId === "b0000000-0000-0000-0000-000000000001" ||
+      n.recipient_id === callerRecipientId ||
+      (targetIdx !== null && nIdx !== null && targetIdx === nIdx);
+
+    if (isOwner && !n.is_read) {
+      n.is_read = true;
+      updatedCount++;
+    }
+  });
+
+  return updatedCount;
+}
 
 export function recordAuditLog(entry: Omit<StoredAuditLog, "id" | "timestamp"> & { id?: string; timestamp?: string }): StoredAuditLog {
   const log: StoredAuditLog = {
@@ -426,6 +527,19 @@ export function createEmergencyAccessOverride(data: {
 
   runtimeAccessGrants.unshift(grant);
 
+  // Mandatory non-suppressible patient emergency notification
+  createNotification({
+    recipient_type: "patient",
+    recipient_id: data.patientId,
+    title: "EMERGENCY ACCESS ALERT",
+    message: `Emergency access override to your medical records was activated by ${data.doctorName} at ${data.hospitalName}. Reason: "${data.emergencyReason}".`,
+    type: "emergency_access",
+    category: "security",
+    reference_id: emId,
+    action_url: "/patient/access-history",
+    is_read: false,
+  });
+
   // Centralized audit logging for emergency access
   recordAuditLog({
     id: `AUD-${Date.now().toString().slice(-6)}`,
@@ -475,6 +589,19 @@ export function getAccessRequestById(id: string): StoredAccessRequest | undefine
 export function addAccessRequest(req: StoredAccessRequest): void {
   runtimeAccessRequests.unshift(req);
 
+  // Notify Patient of New Access Request
+  createNotification({
+    recipient_type: "patient",
+    recipient_id: req.patient_id,
+    title: "New Access Request",
+    message: `${req.doctor_name} (${req.hospital_name}) has requested access to your medical history for ${req.purpose}.`,
+    type: "access_request",
+    category: "requests",
+    reference_id: req.id,
+    action_url: `/patient/access-requests/${req.id}`,
+    is_read: false,
+  });
+
   recordAuditLog({
     actor_name: req.doctor_name,
     actor_role: req.doctor_role,
@@ -512,6 +639,19 @@ export function approveAccessRequest(
       access_type: "view_only",
     };
     runtimeAccessGrants.unshift(newGrant);
+
+    // Notify Staff Member of approval
+    createNotification({
+      recipient_type: "staff",
+      recipient_id: newGrant.staff_id,
+      title: "Access Request Approved",
+      message: `Patient ${callerPatientId} approved your access request for Consultation.`,
+      type: "access_granted",
+      category: "requests",
+      reference_id: requestId,
+      action_url: `/staff/patient/${callerPatientId}`,
+      is_read: false,
+    });
 
     recordAuditLog({
       actor_name: "Rahul Sharma (Patient)",
@@ -566,6 +706,19 @@ export function approveAccessRequest(
   };
 
   runtimeAccessGrants.unshift(grant);
+
+  // Notify requesting staff member
+  createNotification({
+    recipient_type: "staff",
+    recipient_id: req.requested_by_staff_id,
+    title: "Access Request Approved",
+    message: `Patient ${req.patient_id} approved your access request for ${req.purpose}.`,
+    type: "access_granted",
+    category: "requests",
+    reference_id: req.id,
+    action_url: `/staff/patient/${req.patient_id}`,
+    is_read: false,
+  });
 
   recordAuditLog({
     actor_name: req.doctor_name,
@@ -625,6 +778,19 @@ export function denyAccessRequest(
     }
   });
 
+  // Notify requesting staff member of denial
+  createNotification({
+    recipient_type: "staff",
+    recipient_id: req.requested_by_staff_id,
+    title: "Access Request Denied",
+    message: `Patient ${req.patient_id} declined your access request for ${req.purpose}.`,
+    type: "access_denied",
+    category: "requests",
+    reference_id: req.id,
+    action_url: `/staff/find-patient`,
+    is_read: false,
+  });
+
   recordAuditLog({
     actor_name: req.doctor_name,
     actor_role: req.doctor_role,
@@ -649,7 +815,6 @@ export function checkClinicalAccess(
   const now = new Date();
   const targetIdx = extractPatientIndex(patientIdOrMedibaseId);
 
-  // Check if any active, unexpired grant (normal OR emergency) exists
   const grant = runtimeAccessGrants.find((g) => {
     const grantIdx = extractPatientIndex(g.patient_id);
 
@@ -677,7 +842,6 @@ export function checkClinicalAccess(
     return { authorized: true, grant };
   }
 
-  // Record unauthorized access attempt in audit log
   recordAuditLog({
     actor_name: "Staff Doctor",
     actor_role: "Hospital Staff",
@@ -833,6 +997,19 @@ export function addMedicalReport(report: StoredMedicalReport): StoredMedicalRepo
       file_url: report.storage_path,
     });
   }
+
+  // Patient notification for newly uploaded medical report
+  createNotification({
+    recipient_type: "patient",
+    recipient_id: report.patient_id,
+    title: "New Diagnostic Report",
+    message: `A new medical report (${report.file_name}) was uploaded by ${report.doctor_name} at ${report.hospital_name}.`,
+    type: "record_updated",
+    category: "updates",
+    reference_id: report.id,
+    action_url: "/patient/timeline",
+    is_read: false,
+  });
 
   recordAuditLog({
     actor_name: report.doctor_name,
