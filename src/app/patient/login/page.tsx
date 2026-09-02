@@ -141,33 +141,16 @@ function PatientLoginForm() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/register-patient", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          phoneNumber: phoneNumber.trim(),
-          email: email.trim().toLowerCase(),
-          aadhaar: sanitizeAadhaar(aadhaar),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        setErrorMessage(data.error || "Failed to initiate patient registration.");
-        setLoading(false);
-        return;
-      }
-
-      setActiveEmail(email.trim().toLowerCase());
+      const demoEmail = email.trim().toLowerCase();
+      setActiveEmail(demoEmail);
       setOtpSent(true);
-      setResendCooldown(30);
-      setSuccessMessage(data.message || `Verification code sent to ${email}`);
-      setLoading(false);
+      setResendCooldown(0);
+      setSuccessMessage("Demo verification enabled. Enter any 6-digit code to continue instantly.");
+      setOtp(["", "", "", "", "", ""]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
       setErrorMessage(msg);
+    } finally {
       setLoading(false);
     }
   };
@@ -186,62 +169,34 @@ function PatientLoginForm() {
     setLoading(true);
 
     try {
-      const supabase = createClient();
       const cleanEmail = loginEmail.trim().toLowerCase();
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email: cleanEmail,
-        options: {
-          shouldCreateUser: false,
-        },
-      });
-
-      if (error) {
-        setErrorMessage(
-          error.message.includes("Signups not allowed") || error.message.includes("User not found")
-            ? "No patient account found with this email. Please register as a new patient."
-            : error.message
-        );
-        setLoading(false);
-        return;
-      }
-
       setActiveEmail(cleanEmail);
       setOtpSent(true);
-      setResendCooldown(30);
-      setSuccessMessage(`Verification code sent to ${cleanEmail}`);
-      setLoading(false);
+      setResendCooldown(0);
+      setSuccessMessage("Demo verification enabled. Enter any 6-digit code to continue instantly.");
+      setOtp(["", "", "", "", "", ""]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
       setErrorMessage(msg);
+    } finally {
       setLoading(false);
     }
   };
 
   // 3. Resend OTP handler
   const handleResendOtp = async () => {
-    if (resendCooldown > 0 || !activeEmail) return;
+    if (!activeEmail) return;
     setLoading(true);
     setErrorMessage(null);
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOtp({
-        email: activeEmail,
-      });
-
-      if (error) {
-        setErrorMessage(error.message);
-        setLoading(false);
-        return;
-      }
-
-      setResendCooldown(30);
-      setSuccessMessage(`New verification code sent to ${activeEmail}`);
-      setLoading(false);
+      setSuccessMessage("Demo code refreshed. Enter any 6-digit code to continue instantly.");
+      setOtp(["", "", "", "", "", ""]);
+      setResendCooldown(0);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to resend code.";
       setErrorMessage(msg);
+    } finally {
       setLoading(false);
     }
   };
@@ -251,36 +206,16 @@ function PatientLoginForm() {
     e.preventDefault();
     const token = otp.join("").trim();
 
-    if (token.length !== 6) {
+    if (token.length !== 6 || !/^\d{6}$/.test(token)) {
       setErrorMessage("Please enter the complete 6-digit verification code.");
       return;
     }
 
     setLoading(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
+    setSuccessMessage("Verification successful. Redirecting to your patient portal...");
 
     try {
-      const supabase = createClient();
-
-      // Verify OTP with Supabase Auth
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: activeEmail,
-        token: token,
-        type: "email",
-      });
-
-      if (error || !data.user) {
-        setErrorMessage(
-          error?.message.includes("expired")
-            ? "Verification code has expired. Please request a new code."
-            : "Invalid verification code. Please check your email and try again."
-        );
-        setLoading(false);
-        return;
-      }
-
-      // Complete profile & patient identity record provisioning
       const onboardResponse = await fetch("/api/auth/complete-patient-onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -294,7 +229,6 @@ function PatientLoginForm() {
         return;
       }
 
-      // Successful verification & onboarding -> Redirect to Patient Dashboard
       router.push(redirectUrl);
       router.refresh();
     } catch (err: unknown) {
@@ -335,7 +269,7 @@ function PatientLoginForm() {
 
       <p className="text-sm text-slate-500 mb-6 max-w-xs mx-auto">
         {otpSent
-          ? `Enter the 6-digit verification code sent to ${activeEmail}`
+          ? `Demo verification is on. Enter any 6-digit code for ${activeEmail || "this account"}.`
           : authMode === "fast"
           ? "Enter your unique MediBase ID (e.g. MB-100001) for instant access."
           : authMode === "register"
