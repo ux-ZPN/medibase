@@ -193,13 +193,13 @@ export function PatientShell({
       <footer className="bg-white border-t border-slate-200 mt-auto py-6 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
         <div className="flex items-center gap-2">
           <span className="font-bold text-slate-800 text-sm">MediBase</span>
-          <span>© 2024 MediBase Healthcare. All rights reserved. Secure HIPAA Compliant Portal.</span>
+          <span>© 2026 MediBase Healthcare. All rights reserved. Secure HIPAA Compliant Portal.</span>
         </div>
         <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-slate-600">
-          <Link href="#" className="hover:underline">Privacy Policy</Link>
-          <Link href="#" className="hover:underline">Terms of Service</Link>
-          <Link href="#" className="hover:underline">Security Standards</Link>
-          <Link href="#" className="hover:underline">Contact Support</Link>
+          <Link href="/privacy-policy" className="hover:text-slate-900 hover:underline">Privacy Policy</Link>
+          <Link href="/terms-of-service" className="hover:text-slate-900 hover:underline">Terms of Service</Link>
+          <Link href="/security-standards" className="hover:text-slate-900 hover:underline">Security Standards</Link>
+          <Link href="/contact" className="hover:text-[#006699] font-medium hover:underline">Contact Support</Link>
         </div>
       </footer>
     </div>

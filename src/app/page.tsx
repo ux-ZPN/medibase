@@ -380,9 +380,10 @@ export default function LandingPage() {
 
           <div>
             <strong>LEGAL &amp; SECURITY</strong>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
-            <a href="#">Security &amp; HIPAA</a>
+            <Link href="/privacy-policy">Privacy Policy</Link>
+            <Link href="/terms-of-service">Terms of Service</Link>
+            <Link href="/security-standards">Security &amp; HIPAA</Link>
+            <Link href="/contact">Contact Support</Link>
           </div>
         </div>
       </footer>

@@ -202,9 +202,9 @@ export function StaffShell({
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
               </Link>
               <Link
-                href="/staff/profile"
+                href="/contact"
                 className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                title="Help"
+                title="Help & Support"
               >
                 <HelpCircle className="w-4 h-4" />
               </Link>

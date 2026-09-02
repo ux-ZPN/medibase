@@ -706,13 +706,13 @@ export default function PatientLoginPage() {
       <footer className="border-t border-slate-200 bg-white px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
         <div className="flex items-center gap-2">
           <span className="font-bold text-slate-800">MediBase</span>
-          <span>© 2024 MediBase Healthcare. All rights reserved. Secure HIPAA Compliant Portal.</span>
+          <span>© 2026 MediBase Healthcare. All rights reserved. Secure HIPAA Compliant Portal.</span>
         </div>
         <div className="flex flex-wrap items-center gap-6">
-          <Link href="#" className="hover:text-slate-900 transition-colors">Privacy Policy</Link>
-          <Link href="#" className="hover:text-slate-900 transition-colors">Terms of Service</Link>
-          <Link href="#" className="hover:text-slate-900 transition-colors">Security Standards</Link>
-          <Link href="#" className="hover:text-slate-900 transition-colors">Contact Support</Link>
+          <Link href="/privacy-policy" className="hover:text-slate-900 transition-colors">Privacy Policy</Link>
+          <Link href="/terms-of-service" className="hover:text-slate-900 transition-colors">Terms of Service</Link>
+          <Link href="/security-standards" className="hover:text-slate-900 transition-colors">Security Standards</Link>
+          <Link href="/contact" className="hover:text-[#006699] font-medium transition-colors">Contact Support</Link>
         </div>
       </footer>
     </div>
