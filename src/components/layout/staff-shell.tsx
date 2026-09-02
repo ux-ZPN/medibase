@@ -21,6 +21,7 @@ import {
   LifeBuoy,
 } from "lucide-react";
 import { getCurrentUserProfile, UserProfile, signOutUser } from "@/lib/supabase/auth-helpers";
+import { normalizeDoctorName } from "@/lib/staff-profile";
 
 interface StaffShellProps {
   children: React.ReactNode;
@@ -52,7 +53,7 @@ export function StaffShell({
   }, []);
 
   const rawStaffName = profile?.full_name || "Dr. Sharma";
-  const staffName = rawStaffName.startsWith("Dr.") ? rawStaffName : `Dr. ${rawStaffName}`;
+  const staffName = normalizeDoctorName(rawStaffName);
   const hospitalName = profile?.staff_data?.hospital_name || "City General Hospital";
   const department = profile?.staff_data?.department || "Clinical Division";
   const initials = rawStaffName

@@ -1339,6 +1339,34 @@ export function getPatientAccessRequests(patientId: string): StoredAccessRequest
     });
 }
 
+export function getStaffDashboardMetrics() {
+  const now = new Date();
+
+  const pendingRequests = runtimeAccessRequests.filter(
+    (req) => req.status === "pending" && new Date(req.expires_at) > now
+  ).length;
+
+  const activePatients = new Set(
+    runtimeAccessGrants
+      .filter((grant) => grant.is_active && new Date(grant.valid_until) > now)
+      .map((grant) => grant.patient_id)
+  );
+
+  const patientsAccessed = activePatients.size;
+  const emergencyAccess = runtimeEmergencyAccess.filter((entry) => entry.is_active).length;
+  const visitsRecorded = Object.values(runtimeEncounters).reduce(
+    (total, encounters) => total + encounters.length,
+    0
+  );
+
+  return {
+    patientsAccessed,
+    visitsRecorded,
+    pendingRequests,
+    emergencyAccess,
+  };
+}
+
 export function getPatientAccessHistory(patientId: string): StoredAuditLog[] {
   const targetIdx = extractPatientIndex(patientId);
   return runtimeAuditLogs.filter((a) => {

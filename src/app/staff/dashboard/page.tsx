@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { StaffShell } from "@/components/layout/staff-shell";
 import {
@@ -15,9 +15,44 @@ import {
   Plus,
 } from "lucide-react";
 import { getCurrentUserProfile, UserProfile } from "@/lib/supabase/auth-helpers";
+import { getTimeBasedGreeting, normalizeDoctorName } from "@/lib/staff-profile";
+
+function AnimatedMetric({ value, accent = "text-slate-900" }: { value: number; accent?: string }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    const start = display;
+    const end = value;
+    const duration = 800;
+    const frameMs = 16;
+    const steps = Math.max(1, Math.ceil(duration / frameMs));
+    let step = 0;
+
+    const timer = window.setInterval(() => {
+      step += 1;
+      const progress = Math.min(step / steps, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setDisplay(Math.round(start + (end - start) * eased));
+
+      if (progress >= 1) {
+        window.clearInterval(timer);
+      }
+    }, frameMs);
+
+    return () => window.clearInterval(timer);
+  }, [value]);
+
+  return <span className={`text-3xl font-bold ${accent}`}>{display}</span>;
+}
 
 export default function StaffDashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [metrics, setMetrics] = useState({
+    patientsAccessed: 12,
+    visitsRecorded: 8,
+    pendingRequests: 3,
+    emergencyAccess: 1,
+  });
 
   useEffect(() => {
     async function loadProfile() {
@@ -31,20 +66,44 @@ export default function StaffDashboardPage() {
     loadProfile();
   }, []);
 
-  const staffName = profile?.full_name || "Dr. Sharma";
-  const formattedStaffTitle = staffName.startsWith("Dr.") ? staffName : `Dr. ${staffName}`;
+  useEffect(() => {
+    async function fetchMetrics() {
+      try {
+        const response = await fetch("/api/staff/dashboard-metrics");
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data || typeof data !== "object") return;
+
+        setMetrics({
+          patientsAccessed: Number(data.patientsAccessed ?? data.patients_accessed ?? 12),
+          visitsRecorded: Number(data.visitsRecorded ?? data.visits_recorded ?? 8),
+          pendingRequests: Number(data.pendingRequests ?? data.pending_requests ?? 3),
+          emergencyAccess: Number(data.emergencyAccess ?? data.emergency_access ?? 1),
+        });
+      } catch (err) {
+        console.error("Unable to load dashboard metrics:", err);
+      }
+    }
+
+    fetchMetrics();
+  }, []);
+
+  const staffName = profile?.full_name || "Dr. Rahul Sharma";
+  const formattedStaffTitle = normalizeDoctorName(staffName);
+  const hospitalName = profile?.staff_data?.hospital_name || "City General Hospital";
+  const greeting = useMemo(() => getTimeBasedGreeting(staffName), [staffName]);
 
   return (
     <StaffShell activeNav="dashboard">
       <div className="space-y-6 max-w-7xl mx-auto">
-        {/* Top Greeting & Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              Good morning, {formattedStaffTitle}
+              {greeting}
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              Here is your clinical overview for today at {profile?.staff_data?.hospital_name || "City General Hospital"}.
+              Here is your clinical overview for today at {hospitalName}.
             </p>
           </div>
           <Link
@@ -56,9 +115,7 @@ export default function StaffDashboardPage() {
           </Link>
         </div>
 
-        {/* 4 Stat Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Patients Accessed */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -69,12 +126,11 @@ export default function StaffDashboardPage() {
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-slate-900">12</span>
+              <AnimatedMetric value={metrics.patientsAccessed} accent="text-slate-900" />
               <span className="text-xs font-semibold text-emerald-600">↑2</span>
             </div>
           </div>
 
-          {/* Visits Recorded */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -85,12 +141,11 @@ export default function StaffDashboardPage() {
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-slate-900">8</span>
+              <AnimatedMetric value={metrics.visitsRecorded} accent="text-slate-900" />
               <span className="text-xs font-medium text-slate-500">Today</span>
             </div>
           </div>
 
-          {/* Pending Requests */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -101,12 +156,11 @@ export default function StaffDashboardPage() {
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-slate-900">3</span>
+              <AnimatedMetric value={metrics.pendingRequests} accent="text-slate-900" />
               <span className="text-xs font-medium text-slate-500">Needs review</span>
             </div>
           </div>
 
-          {/* Emergency Access */}
           <div className="bg-red-50/50 border border-red-200 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-red-700 uppercase tracking-wider">
@@ -117,17 +171,14 @@ export default function StaffDashboardPage() {
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-red-700">1</span>
+              <AnimatedMetric value={metrics.emergencyAccess} accent="text-red-700" />
               <span className="text-xs font-semibold text-red-600">Action required</span>
             </div>
           </div>
         </div>
 
-        {/* Action Banners Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Dark QR Scanner Banner */}
           <div className="lg:col-span-7 bg-[#111827] rounded-xl p-7 text-white relative overflow-hidden flex flex-col justify-between min-h-[220px]">
-            {/* Background decoration circle */}
             <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/4 w-64 h-64 rounded-full bg-slate-800/40 pointer-events-none" />
 
             <div className="relative z-10">
@@ -151,9 +202,7 @@ export default function StaffDashboardPage() {
             </div>
           </div>
 
-          {/* Right Action Cards */}
           <div className="lg:col-span-5 flex flex-col gap-4">
-            {/* Search Patient */}
             <Link
               href="/staff/find-patient"
               className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all"
@@ -167,7 +216,6 @@ export default function StaffDashboardPage() {
               </div>
             </Link>
 
-            {/* Add Visit Note */}
             <Link
               href="/staff/patient/MB-102394/new-visit"
               className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all"
@@ -183,7 +231,6 @@ export default function StaffDashboardPage() {
           </div>
         </div>
 
-        {/* Recent Activity Table */}
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-bold text-slate-900 text-base">Recent Activity</h2>
@@ -213,10 +260,7 @@ export default function StaffDashboardPage() {
                     <div className="w-7 h-7 rounded-full bg-sky-100 text-sky-800 font-bold flex items-center justify-center text-[10px]">
                       RS
                     </div>
-                    <Link
-                      href="/staff/patient/MB-102394"
-                      className="font-semibold text-slate-900 hover:text-[#006699]"
-                    >
+                    <Link href="/staff/patient/MB-102394" className="font-semibold text-slate-900 hover:text-[#006699]">
                       Rahul Sharma
                     </Link>
                   </td>
@@ -262,10 +306,7 @@ export default function StaffDashboardPage() {
                     <div className="w-7 h-7 rounded-full bg-red-100 text-red-700 font-bold flex items-center justify-center text-[10px]">
                       <AlertCircle className="w-3.5 h-3.5" />
                     </div>
-                    <Link
-                      href="/staff/emergency/MB-102394"
-                      className="font-semibold text-slate-900 hover:text-red-700"
-                    >
+                    <Link href="/staff/emergency/MB-102394" className="font-semibold text-slate-900 hover:text-red-700">
                       Unknown Patient
                     </Link>
                   </td>
