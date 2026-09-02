@@ -191,12 +191,15 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   if (typeof window !== "undefined") {
     try {
       const res = await fetch("/api/auth/me", { cache: "no-store" });
-      const data = await res.json();
-      if (data.success && data.profile) {
-        return data.profile;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.profile) {
+          return data.profile;
+        }
       }
+      // 401 = no session but that's ok; fall through to cookie resolver
     } catch {
-      // Fall through to local resolver if fetch fails
+      // network failure — fall through to local resolver
     }
   }
 

@@ -6,47 +6,47 @@ import { findRegisteredPatient, findRegisteredStaff } from "@/lib/identity/acces
 const KNOWN_PATIENTS_MAP: Record<string, unknown> = {
   "MB-100001": {
     id: "10000000-0000-0000-0000-000000000001",
-    email: "priya.sharma@medibase.org",
+    email: "anjali.mehta@medibase.org",
     role: "patient",
-    full_name: "Priya Sharma",
+    full_name: "Anjali Mehta",
     phone_number: "+91 98765 10001",
     patient_data: {
       id: "10000000-0000-0000-0000-000000000001",
       medibase_id: "MB-100001",
       qr_code_token: "d3b07384-0001-4632-b7e6-8c2ff6d8b901",
-      aadhaar_last4: "2345",
-      blood_group: "O+",
-      occupation: "Software Engineer",
-      allergies: ["Penicillin"],
-      chronic_conditions: ["Mild Asthma"],
-      date_of_birth: "1994-06-15",
+      aadhaar_last4: "8492",
+      blood_group: "O-",
+      occupation: "School Teacher",
+      allergies: ["Penicillin", "Sulfa Drugs"],
+      chronic_conditions: ["Seasonal Bronchitis"],
+      date_of_birth: "1990-07-05",
       gender: "Female",
     },
   },
   "MB-100002": {
     id: "10000000-0000-0000-0000-000000000002",
-    email: "rajesh.gupta@medibase.org",
+    email: "vikram.singh@medibase.org",
     role: "patient",
-    full_name: "Rajesh Gupta",
+    full_name: "Vikram Singh",
     phone_number: "+91 98765 10002",
     patient_data: {
       id: "10000000-0000-0000-0000-000000000002",
       medibase_id: "MB-100002",
       qr_code_token: "d3b07384-0002-4632-b7e6-8c2ff6d8b902",
-      aadhaar_last4: "7812",
+      aadhaar_last4: "2941",
       blood_group: "A+",
-      occupation: "Civil Engineer",
-      allergies: ["Sulfa Drugs"],
-      chronic_conditions: ["Hypertension"],
-      date_of_birth: "1978-11-23",
+      occupation: "Farmer",
+      allergies: ["Pollen"],
+      chronic_conditions: ["Osteoarthritis"],
+      date_of_birth: "1975-11-22",
       gender: "Male",
     },
   },
   "MB-100003": {
     id: "10000000-0000-0000-0000-000000000003",
-    email: "ananya.roy@medibase.org",
+    email: "priya.reddy@medibase.org",
     role: "patient",
-    full_name: "Ananya Roy",
+    full_name: "Priya Reddy",
     phone_number: "+91 98765 10003",
     patient_data: {
       id: "10000000-0000-0000-0000-000000000003",
@@ -111,7 +111,7 @@ const KNOWN_PATIENTS_MAP: Record<string, unknown> = {
       qr_code_token: "d3b07384-d113-4632-b7e6-8c2ff6d8b991",
       aadhaar_last4: "1234",
       blood_group: "O+",
-      occupation: "Civil Services Officer",
+      occupation: "Accountant",
       allergies: ["Penicillin", "Dust Mites"],
       chronic_conditions: ["Mild Hypertension"],
       date_of_birth: "1994-06-15",
@@ -343,10 +343,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      profile: KNOWN_PATIENTS_MAP["MB-100001"],
-    });
+    return NextResponse.json({ success: false, error: "No active session found." }, { status: 401 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to resolve authenticated profile.";
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
