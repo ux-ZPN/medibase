@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { StaffShell } from "@/components/layout/staff-shell";
 import {
@@ -11,220 +11,301 @@ import {
   Info,
   Stethoscope,
   ChevronRight,
+  RefreshCw,
+  FileText,
+  AlertCircle,
+  XCircle,
 } from "lucide-react";
+
+interface AccessRequestItem {
+  id: string;
+  patient_id: string;
+  doctor_name: string;
+  hospital_name: string;
+  department?: string;
+  purpose: string;
+  requested_scope?: string[];
+  status: "pending" | "approved" | "denied" | "expired";
+  requested_at: string;
+  expires_at: string;
+  is_active: boolean;
+}
 
 export default function StaffAccessRequestsPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "denied" | "expired">("pending");
+  const [requests, setRequests] = useState<AccessRequestItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadRequests() {
+      try {
+        const res = await fetch("/api/staff/access-requests");
+        const data = await res.json();
+        if (data.success && Array.isArray(data.requests)) {
+          setRequests(data.requests);
+        }
+      } catch (err) {
+        console.error("Failed to load staff access requests:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadRequests();
+  }, []);
+
+  const pendingCount = requests.filter((r) => r.status === "pending").length;
+  const approvedCount = requests.filter((r) => r.status === "approved").length;
+  const deniedCount = requests.filter((r) => r.status === "denied").length;
+  const expiredCount = requests.filter((r) => r.status === "expired").length;
+
+  const filteredRequests = requests.filter((r) => r.status === activeTab);
 
   return (
     <StaffShell activeNav="access-requests">
       <div className="space-y-6 max-w-5xl mx-auto">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Access Requests
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Manage provisional clinical access permissions across departments.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              Access Requests
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Manage patient authorization requests, view approvals, and access granted medical records.
+            </p>
+          </div>
+
+          <Link
+            href="/staff/find-patient"
+            className="px-4 py-2 bg-[#006699] hover:bg-[#005580] text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+          >
+            <span>+ Request New Patient Access</span>
+          </Link>
         </div>
 
         {/* Tab Filters */}
         <div className="border-b border-slate-200 flex items-center gap-6 text-sm font-semibold">
           <button
             onClick={() => setActiveTab("pending")}
-            className={`pb-3 flex items-center gap-2 ${
+            className={`pb-3 flex items-center gap-2 cursor-pointer ${
               activeTab === "pending"
                 ? "text-[#006699] border-b-2 border-[#006699]"
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
             <span>Pending</span>
-            <span className="w-5 h-5 rounded-full bg-sky-100 text-[#006699] text-xs flex items-center justify-center font-bold">
-              2
-            </span>
+            {pendingCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-sky-100 text-[#006699] text-xs flex items-center justify-center font-bold">
+                {pendingCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("approved")}
-            className={`pb-3 ${
+            className={`pb-3 flex items-center gap-2 cursor-pointer ${
               activeTab === "approved"
                 ? "text-[#006699] border-b-2 border-[#006699]"
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Approved
+            <span>Approved</span>
+            {approvedCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-xs flex items-center justify-center font-bold">
+                {approvedCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("denied")}
-            className={`pb-3 ${
+            className={`pb-3 flex items-center gap-2 cursor-pointer ${
               activeTab === "denied"
                 ? "text-[#006699] border-b-2 border-[#006699]"
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Denied
+            <span>Denied</span>
+            {deniedCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-800 text-xs flex items-center justify-center font-bold">
+                {deniedCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("expired")}
-            className={`pb-3 ${
+            className={`pb-3 flex items-center gap-2 cursor-pointer ${
               activeTab === "expired"
                 ? "text-[#006699] border-b-2 border-[#006699]"
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Expired
+            <span>Expired</span>
+            {expiredCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 text-xs flex items-center justify-center font-bold">
+                {expiredCount}
+              </span>
+            )}
           </button>
         </div>
 
-        {/* Request Cards */}
-        <div className="space-y-4">
-          {/* Card 1: Eleanor Vance */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-base font-bold text-slate-900">Eleanor Vance</h3>
-                <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-100 text-slate-600">
-                  MRN-8472-X9
-                </span>
-              </div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
-                <Clock className="w-3.5 h-3.5" />
-                Awaiting patient approval
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PROVIDER</span>
-                <span className="font-semibold text-slate-800 flex items-center gap-1 mt-0.5">
-                  <Stethoscope className="w-3.5 h-3.5 text-[#006699]" />
-                  Dr. A. Sharma
-                </span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">CLINICAL PURPOSE</span>
-                <span className="text-slate-800 mt-0.5 block">Specialist Referral</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">REQUESTED SCOPE</span>
-                <span className="text-slate-800 mt-0.5 block">Full History, Lab Results</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">DURATION</span>
-                <span className="text-slate-800 mt-0.5 block">48 Hours</span>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button disabled className="text-xs font-semibold text-slate-400 flex items-center gap-1 cursor-not-allowed">
-                <span>Open Patient</span>
-                <Lock className="w-3.5 h-3.5" />
-              </button>
-            </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="p-12 text-center bg-white border border-slate-200 rounded-xl space-y-2">
+            <RefreshCw className="w-6 h-6 animate-spin text-[#006699] mx-auto mb-2" />
+            <p className="text-xs text-slate-500 font-medium">Loading clinical access requests...</p>
           </div>
+        )}
 
-          {/* Card 2: Marcus Thorne (Approved) */}
-          <div className="bg-white border-l-4 border-l-[#006699] border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-base font-bold text-slate-900">Marcus Thorne</h3>
-                <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-100 text-slate-600">
-                  MRN-3910-A4
-                </span>
-              </div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Access active until 3:45 PM
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PROVIDER</span>
-                <span className="font-semibold text-slate-800 flex items-center gap-1 mt-0.5">
-                  <Stethoscope className="w-3.5 h-3.5 text-[#006699]" />
-                  Dr. E. Chen
-                </span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">CLINICAL PURPOSE</span>
-                <span className="text-slate-800 mt-0.5 block">Surgical Consultation</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">REQUESTED SCOPE</span>
-                <span className="text-slate-800 mt-0.5 block">Imaging, Medications</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">DURATION</span>
-                <span className="text-slate-800 mt-0.5 block">24 Hours</span>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <Link
-                href="/staff/patient/MB-102394"
-                className="px-5 py-2 bg-black hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow"
-              >
-                <span>Open Patient</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </Link>
-            </div>
+        {/* Empty State */}
+        {!loading && filteredRequests.length === 0 && (
+          <div className="p-10 text-center bg-white border border-slate-200 rounded-xl space-y-2">
+            <p className="text-base font-bold text-slate-900">No {activeTab} access requests found</p>
+            <p className="text-xs text-slate-500">
+              {activeTab === "approved"
+                ? "When patients approve your authorization requests, they will appear here with direct links to view their medical history."
+                : `There are currently no access requests in the ${activeTab} state.`}
+            </p>
           </div>
+        )}
 
-          {/* Card 3: Sarah Jenkins */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-base font-bold text-slate-900">Sarah Jenkins</h3>
-                <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-100 text-slate-600">
-                  MRN-9122-C1
-                </span>
-              </div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
-                <Clock className="w-3.5 h-3.5" />
-                Awaiting patient approval
-              </span>
-            </div>
+        {/* Live Request Cards */}
+        {!loading && filteredRequests.length > 0 && (
+          <div className="space-y-4">
+            {filteredRequests.map((req) => {
+              const isApproved = req.status === "approved";
+              const isPending = req.status === "pending";
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PROVIDER</span>
-                <span className="font-semibold text-slate-800 flex items-center gap-1 mt-0.5">
-                  <Stethoscope className="w-3.5 h-3.5 text-[#006699]" />
-                  Dr. L. Hayes
-                </span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">CLINICAL PURPOSE</span>
-                <span className="text-slate-800 mt-0.5 block">Medication Review</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">REQUESTED SCOPE</span>
-                <span className="text-slate-800 mt-0.5 block">Pharmacy Records Only</span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">DURATION</span>
-                <span className="text-slate-800 mt-0.5 block">12 Hours</span>
-              </div>
-            </div>
+              return (
+                <div
+                  key={req.id}
+                  className={`bg-white border rounded-xl p-6 shadow-sm space-y-4 transition-all ${
+                    isApproved
+                      ? "border-l-4 border-l-[#006699] border-slate-200"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-base font-bold text-slate-900">Patient {req.patient_id}</h3>
+                      <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-100 text-slate-600">
+                        {req.patient_id}
+                      </span>
+                    </div>
 
-            <div className="flex justify-end pt-2">
-              <button disabled className="text-xs font-semibold text-slate-400 flex items-center gap-1 cursor-not-allowed">
-                <span>Open Patient</span>
-                <Lock className="w-3.5 h-3.5" />
-              </button>
-            </div>
+                    {isApproved ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Active Patient Authorization</span>
+                      </span>
+                    ) : isPending ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Awaiting Patient Approval</span>
+                      </span>
+                    ) : req.status === "denied" ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+                        <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Declined by Patient</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>Expired</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        REQUESTING DOCTOR
+                      </span>
+                      <span className="font-semibold text-slate-800 flex items-center gap-1 mt-0.5">
+                        <Stethoscope className="w-3.5 h-3.5 text-[#006699]" />
+                        {req.doctor_name}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        CLINICAL PURPOSE
+                      </span>
+                      <span className="text-slate-800 mt-0.5 block">{req.purpose}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        HOSPITAL / CLINIC
+                      </span>
+                      <span className="text-slate-800 mt-0.5 block">{req.hospital_name}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        STATUS / EXPIRES
+                      </span>
+                      <span className="text-slate-800 mt-0.5 block font-mono">
+                        {new Date(req.expires_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2 border-t border-slate-50">
+                    {isApproved ? (
+                      <>
+                        <Link
+                          href={`/staff/patient/${req.patient_id}`}
+                          className="px-3.5 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-800 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5"
+                        >
+                          <span>Patient Overview</span>
+                        </Link>
+
+                        <Link
+                          href={`/staff/patient/${req.patient_id}/timeline`}
+                          className="px-4 py-1.5 bg-[#006699] hover:bg-[#005580] text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+                        >
+                          <span>View Full Medical Timeline</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </Link>
+                      </>
+                    ) : isPending ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 italic">
+                          Medical history locked until patient approves
+                        </span>
+                        <button disabled className="px-3.5 py-1.5 bg-slate-100 text-slate-400 text-xs font-semibold rounded-lg flex items-center gap-1 cursor-not-allowed">
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>Locked</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <Link
+                        href={`/staff/find-patient`}
+                        className="text-xs font-semibold text-[#006699] hover:underline flex items-center gap-1"
+                      >
+                        <span>Re-initiate Request</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
 
         {/* Disclaimer Box */}
         <div className="bg-sky-50/60 border border-sky-100 rounded-xl p-4 flex items-center gap-3 text-xs text-slate-600">
           <Info className="w-5 h-5 text-[#006699] shrink-0" />
           <p>
-            Emergency access must be initiated through the separate <Link href="/staff/emergency" className="font-semibold text-[#006699] underline">Emergency Access workflow</Link>. Unauthorized access to patient records outside of explicitly granted permissions is strictly prohibited and logged for audit.
+            Emergency trauma access can be initiated anytime through the{" "}
+            <Link href="/staff/emergency" className="font-semibold text-[#006699] underline">
+              Emergency Access Override workflow
+            </Link>
+            . All patient record accesses are immutably logged in compliance with national privacy standards.
           </p>
         </div>
       </div>
     </StaffShell>
   );
 }
+

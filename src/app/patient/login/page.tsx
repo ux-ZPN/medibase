@@ -440,9 +440,9 @@ function PatientLoginForm() {
               </span>
               <div className="grid grid-cols-2 gap-1.5">
                 {[
-                  { id: "MB-100001", name: "Anjali Mehta" },
-                  { id: "MB-100002", name: "Vikram Singh" },
-                  { id: "MB-100003", name: "Priya Reddy" },
+                  { id: "MB-100001", name: "Priya Sharma" },
+                  { id: "MB-100002", name: "Rajesh Gupta" },
+                  { id: "MB-100003", name: "Ananya Roy" },
                   { id: "MB-102394", name: "Rahul Sharma" },
                 ].map((item) => (
                   <button

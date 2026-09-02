@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutGrid,
   UserSearch,
+  UserPlus,
   QrCode,
   History,
   KeyRound,
@@ -64,6 +65,7 @@ export function StaffShell({
 
   const navItems = [
     { label: "Dashboard", href: "/staff/dashboard", icon: LayoutGrid, key: "dashboard" },
+    { label: "Register Patient", href: "/staff/register-patient", icon: UserPlus, key: "register-patient" },
     { label: "Find Patient", href: "/staff/find-patient", icon: UserSearch, key: "find-patient" },
     { label: "Scan QR", href: "/staff/scan-qr", icon: QrCode, key: "scan-qr" },
     { label: "Recent Patients", href: "/staff/patient/MB-102394", icon: History, key: "recent-patients" },
@@ -76,6 +78,7 @@ export function StaffShell({
   const isActive = (item: typeof navItems[0]) => {
     if (activeNav) return activeNav === item.key;
     if (item.key === "dashboard" && pathname === "/staff/dashboard") return true;
+    if (item.key === "register-patient" && (pathname === "/staff/register-patient" || pathname.startsWith("/staff/register"))) return true;
     if (item.key === "find-patient" && (pathname === "/staff/find-patient" || pathname.startsWith("/staff/find"))) return true;
     if (item.key === "scan-qr" && pathname === "/staff/scan-qr") return true;
     if (item.key === "recent-patients" && (pathname.startsWith("/staff/patient") && !pathname.includes("find"))) return true;

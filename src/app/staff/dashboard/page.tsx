@@ -13,6 +13,7 @@ import {
   ArrowRight,
   MoreVertical,
   Plus,
+  UserPlus,
 } from "lucide-react";
 import { getCurrentUserProfile, UserProfile } from "@/lib/supabase/auth-helpers";
 
@@ -33,6 +34,7 @@ export default function StaffDashboardPage() {
 
   const staffName = profile?.full_name || "Dr. Sharma";
   const formattedStaffTitle = staffName.startsWith("Dr.") ? staffName : `Dr. ${staffName}`;
+  const hospitalName = profile?.staff_data?.hospital_name || "City General Hospital";
 
   return (
     <StaffShell activeNav="dashboard">
@@ -44,16 +46,27 @@ export default function StaffDashboardPage() {
               Good morning, {formattedStaffTitle}
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              Here is your clinical overview for today at {profile?.staff_data?.hospital_name || "City General Hospital"}.
+              Here is your clinical overview for today at {hospitalName}.
             </p>
           </div>
-          <Link
-            href="/staff/find-patient"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#006699] hover:bg-[#005580] text-white text-sm font-semibold rounded-lg shadow-sm transition-colors shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Consultation</span>
-          </Link>
+
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/staff/register-patient"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#006699] hover:bg-[#005580] text-white text-xs font-bold rounded-lg shadow-sm transition-colors shrink-0"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ Register Patient</span>
+            </Link>
+
+            <Link
+              href="/staff/find-patient"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Consultation</span>
+            </Link>
+          </div>
         </div>
 
         {/* 4 Stat Metric Cards */}
@@ -152,11 +165,25 @@ export default function StaffDashboardPage() {
           </div>
 
           {/* Right Action Cards */}
-          <div className="lg:col-span-5 flex flex-col gap-4">
+          <div className="lg:col-span-5 flex flex-col gap-3.5">
+            {/* Register New Patient */}
+            <Link
+              href="/staff/register-patient"
+              className="bg-gradient-to-r from-sky-50 to-indigo-50/40 border border-sky-200 rounded-xl p-4 flex items-center gap-4 hover:border-sky-300 hover:shadow-sm transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-[#006699] text-white flex items-center justify-center shrink-0 shadow-sm">
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Register New Patient</h3>
+                <p className="text-xs text-slate-600">Onboard walk-in citizen, vitals & past history</p>
+              </div>
+            </Link>
+
             {/* Search Patient */}
             <Link
               href="/staff/find-patient"
-              className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all"
+              className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all"
             >
               <div className="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
                 <Search className="w-5 h-5" />
@@ -170,7 +197,7 @@ export default function StaffDashboardPage() {
             {/* Add Visit Note */}
             <Link
               href="/staff/patient/MB-102394/new-visit"
-              className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all"
+              className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all"
             >
               <div className="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
                 <FileText className="w-5 h-5" />

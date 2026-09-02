@@ -3,7 +3,21 @@ import { createClient } from "@/lib/supabase/server";
 import {
   findPendingAccessRequest,
   addAccessRequest,
+  getStaffAccessRequests,
 } from "@/lib/identity/access-requests-store";
+
+export async function GET() {
+  try {
+    const requests = getStaffAccessRequests();
+    return NextResponse.json({
+      success: true,
+      requests,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to load access requests.";
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   try {

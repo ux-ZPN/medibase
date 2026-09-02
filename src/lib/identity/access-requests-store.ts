@@ -167,6 +167,14 @@ export interface StoredPatientRegistration {
     treatment: string;
     notes?: string;
   }>;
+  uploaded_documents?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    sizeBytes: number;
+    dataUrl?: string;
+    uploadedAt: string;
+  }>;
   created_at: string;
 }
 
@@ -1339,6 +1347,17 @@ export function getPatientAccessRequests(patientId: string): StoredAccessRequest
     });
 }
 
+export function getStaffAccessRequests(staffId?: string): StoredAccessRequest[] {
+  const now = new Date();
+  return runtimeAccessRequests.map((req) => {
+    const isExpired = new Date(req.expires_at) <= now;
+    if (isExpired && req.status === "pending") {
+      return { ...req, status: "expired" as const, is_active: false };
+    }
+    return req;
+  });
+}
+
 export function getPatientAccessHistory(patientId: string): StoredAuditLog[] {
   const targetIdx = extractPatientIndex(patientId);
   return runtimeAuditLogs.filter((a) => {
@@ -1661,9 +1680,36 @@ export function registerNewPatient(
         time: formattedTime,
       },
     ],
-    reports: [],
+    reports: Array.isArray(data.uploaded_documents)
+      ? data.uploaded_documents.map((doc) => ({
+          title: doc.name,
+          file_name: doc.name,
+          file_url: doc.dataUrl || `/medical-records/${newMedibaseId}/${doc.name}`,
+        }))
+      : [],
     clinical_notes: `Patient successfully onboarded into MediBase Network. Emergency Contact: ${data.emergency_contact.name} (${data.emergency_contact.relationship} - ${data.emergency_contact.phone}). Height: ${data.height_cm || "N/A"}, Weight: ${data.weight_kg || "N/A"}.`,
   };
+
+  // Also register in runtimeMedicalReports
+  if (Array.isArray(data.uploaded_documents)) {
+    data.uploaded_documents.forEach((doc, idx) => {
+      runtimeMedicalReports.unshift({
+        id: `rep-onboard-${newMedibaseId.toLowerCase()}-${idx + 1}`,
+        patient_id: newMedibaseId,
+        encounter_id: baselineEnc.id,
+        uploaded_by_staff_id: "b0000000-0000-0000-0000-000000000001",
+        hospital_name: "City General Hospital",
+        doctor_name: "Dr. Rahul Sharma",
+        report_title: doc.name,
+        report_type: doc.type || "diagnostic_file",
+        file_name: doc.name,
+        file_size_bytes: doc.sizeBytes || 240000,
+        mime_type: doc.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg",
+        storage_path: doc.dataUrl || `medical-records/${newMedibaseId}/${doc.name}`,
+        created_at: now.toISOString(),
+      });
+    });
+  }
 
   initialEncounters.unshift(baselineEnc);
   runtimeEncounters[newMedibaseId] = initialEncounters;
@@ -1676,13 +1722,12 @@ export function registerNewPatient(
     staff_id: "b0000000-0000-0000-0000-000000000001",
     hospital_id: "a0000000-0000-0000-0000-000000000001",
     doctor_name: "Dr. Rahul Sharma",
-    doctor_role: "Attending Physician",
     hospital_name: "City General Hospital",
-    purpose: "Initial Onboarding & Medical Record Review",
+    reason: "Initial Onboarding & Medical Record Review",
     granted_at: now.toISOString(),
     valid_until: new Date(now.getTime() + 72 * 60 * 60 * 1000).toISOString(),
     is_active: true,
-    access_scope: ["Medical History", "Prescriptions", "Diagnostic Reports"],
+    access_type: "view_and_contribute",
   });
 
   // Log audit event

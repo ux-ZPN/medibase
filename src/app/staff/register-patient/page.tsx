@@ -28,6 +28,14 @@ import {
   ArrowLeft,
   FileText,
   ShieldCheck,
+  UploadCloud,
+  FileImage,
+  File,
+  Paperclip,
+  X,
+  Eye,
+  Image as ImageIcon,
+  FileCheck,
 } from "lucide-react";
 
 interface PastHistoryItem {
@@ -39,6 +47,15 @@ interface PastHistoryItem {
   diagnosis: string;
   treatment: string;
   notes: string;
+}
+
+interface UploadedDocument {
+  id: string;
+  name: string;
+  type: "lab_report" | "prescription" | "discharge_summary" | "scan_imaging" | "other";
+  sizeBytes: number;
+  dataUrl?: string;
+  uploadedAt: string;
 }
 
 export default function StaffRegisterPatientPage() {
@@ -82,8 +99,27 @@ export default function StaffRegisterPatientPage() {
     },
   ]);
 
+  // Uploaded Medical Documents & Images
+  const [uploadedDocs, setUploadedDocs] = useState<UploadedDocument[]>([
+    {
+      id: "doc-seed-1",
+      name: "Discharge_Summary_Apollo_Clinic.pdf",
+      type: "discharge_summary",
+      sizeBytes: 342000,
+      uploadedAt: "15 Jan 2025",
+    },
+    {
+      id: "doc-seed-2",
+      name: "Chest_XRay_Digital_Scan.png",
+      type: "scan_imaging",
+      sizeBytes: 1250000,
+      uploadedAt: "15 Jan 2025",
+    },
+  ]);
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<UploadedDocument | null>(null);
   const [registeredResult, setRegisteredResult] = useState<{
     medibase_id: string;
     patient_id: string;
@@ -134,6 +170,68 @@ export default function StaffRegisterPatientPage() {
         notes: "Normal lipid profile and resting ECG.",
       },
     ]);
+
+    setUploadedDocs([
+      {
+        id: "doc-demo-1",
+        name: "Prescription_Fluticasone_Feb2025.pdf",
+        type: "prescription",
+        sizeBytes: 215000,
+        uploadedAt: "14 Feb 2025",
+      },
+      {
+        id: "doc-demo-2",
+        name: "Sinus_Digital_Scan_View.jpg",
+        type: "scan_imaging",
+        sizeBytes: 890000,
+        uploadedAt: "14 Feb 2025",
+      },
+      {
+        id: "doc-demo-3",
+        name: "Annual_Executive_Lab_Report.pdf",
+        type: "lab_report",
+        sizeBytes: 430000,
+        uploadedAt: "20 Sep 2024",
+      },
+    ]);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      let docType: UploadedDocument["type"] = "other";
+      const lower = file.name.toLowerCase();
+      if (lower.includes("rx") || lower.includes("prescrip")) docType = "prescription";
+      else if (lower.includes("lab") || lower.includes("blood") || lower.includes("test")) docType = "lab_report";
+      else if (lower.includes("xray") || lower.includes("scan") || lower.includes("mri") || file.type.startsWith("image/")) docType = "scan_imaging";
+      else if (lower.includes("discharge") || lower.includes("summary")) docType = "discharge_summary";
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const newDoc: UploadedDocument = {
+          id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          name: file.name,
+          type: docType,
+          sizeBytes: file.size,
+          dataUrl: reader.result as string,
+          uploadedAt: new Date().toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }),
+        };
+        setUploadedDocs((prev) => [...prev, newDoc]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = "";
+  };
+
+  const handleRemoveDoc = (id: string) => {
+    setUploadedDocs(uploadedDocs.filter((d) => d.id !== id));
+  };
+
+  const handleUpdateDocType = (id: string, newType: UploadedDocument["type"]) => {
+    setUploadedDocs(uploadedDocs.map((d) => (d.id === id ? { ...d, type: newType } : d)));
   };
 
   const handleAddPastHistory = () => {
@@ -217,6 +315,7 @@ export default function StaffRegisterPatientPage() {
           treatment: h.treatment,
           notes: h.notes,
         })),
+        uploadedDocuments: uploadedDocs,
       };
 
       const res = await fetch("/api/patient/register-full", {
@@ -244,7 +343,7 @@ export default function StaffRegisterPatientPage() {
   };
 
   return (
-    <StaffShell activeNav="find-patient">
+    <StaffShell activeNav="register-patient">
       <div className="space-y-6 max-w-4xl mx-auto">
         {/* Top Action Bar */}
         <div className="flex items-center justify-between">
@@ -791,6 +890,133 @@ export default function StaffRegisterPatientPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 5: Medical Documents & Image Upload */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                    5
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">
+                      Medical Documents, Prescriptions & Images
+                    </h2>
+                    <p className="text-[11px] text-slate-500">
+                      Import prior prescriptions, diagnostic lab reports, discharge summaries, and medical scans (JPG, PNG, PDF).
+                    </p>
+                  </div>
+                </div>
+
+                <label className="px-3.5 py-1.5 bg-[#006699] hover:bg-[#005580] text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 self-start sm:self-auto cursor-pointer shadow-sm">
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>Import Files / Images</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Drag & Drop Upload Zone */}
+              <label className="border-2 border-dashed border-sky-200 hover:border-[#006699] bg-sky-50/40 hover:bg-sky-50/70 rounded-xl p-5 text-center flex flex-col items-center justify-center gap-2 transition-all cursor-pointer group">
+                <div className="w-10 h-10 rounded-full bg-sky-100 text-[#006699] flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <UploadCloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-800">
+                    Click to browse or drag & drop files here
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Supports JPG, PNG, WebP image scans, and PDF clinical reports (up to 25 MB each)
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+
+              {/* Uploaded Documents List */}
+              {uploadedDocs.length > 0 && (
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1">
+                    <span>Uploaded Files ({uploadedDocs.length})</span>
+                    <span>Classify Document Type</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {uploadedDocs.map((doc) => {
+                      const isImage = doc.name.match(/\.(jpg|jpeg|png|webp)$/i);
+                      return (
+                        <div
+                          key={doc.id}
+                          className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3 relative hover:border-slate-300 transition-colors"
+                        >
+                          {/* Thumbnail / Icon */}
+                          <div className="w-11 h-11 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                            {doc.dataUrl && isImage ? (
+                              <img
+                                src={doc.dataUrl}
+                                alt={doc.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : isImage ? (
+                              <FileImage className="w-5 h-5 text-sky-600" />
+                            ) : (
+                              <FileText className="w-5 h-5 text-rose-500" />
+                            )}
+                          </div>
+
+                          {/* Info & Category Selector */}
+                          <div className="min-w-0 flex-1 space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-bold text-slate-900 truncate" title={doc.name}>
+                                {doc.name}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDoc(doc.id)}
+                                className="text-slate-400 hover:text-rose-600 p-0.5 transition-colors cursor-pointer"
+                                title="Remove file"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 text-[11px]">
+                              <span className="text-slate-400 font-mono">
+                                {(doc.sizeBytes / 1024).toFixed(0)} KB
+                              </span>
+
+                              <select
+                                value={doc.type}
+                                onChange={(e) =>
+                                  handleUpdateDocType(doc.id, e.target.value as UploadedDocument["type"])
+                                }
+                                className="px-2 py-0.5 rounded border border-slate-300 bg-white text-[11px] font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006699]"
+                              >
+                                <option value="prescription">Prescription</option>
+                                <option value="lab_report">Lab Report</option>
+                                <option value="discharge_summary">Discharge Summary</option>
+                                <option value="scan_imaging">Scan / X-Ray / MRI</option>
+                                <option value="other">Other Document</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

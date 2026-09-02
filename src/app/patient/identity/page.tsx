@@ -36,8 +36,8 @@ export default function DigitalIdentityPage() {
     loadIdentity();
   }, []);
 
-  const patientName = profile?.full_name || "Rahul Sharma";
-  const medibaseId = profile?.patient_data?.medibase_id || "MB-102394";
+  const patientName = profile?.full_name || (profile?.patient_data?.medibase_id ? `Patient (${profile.patient_data.medibase_id})` : "Patient Profile");
+  const medibaseId = profile?.patient_data?.medibase_id || "MB-100001";
   const maskedAadhaar = getMaskedAadhaar(profile?.patient_data?.aadhaar_last4);
 
   const handleDownloadQr = () => {

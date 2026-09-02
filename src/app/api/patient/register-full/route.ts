@@ -45,8 +45,40 @@ export async function POST(request: Request) {
     const chronicConditions = Array.isArray(body.chronicConditions) ? body.chronicConditions : (body.chronicConditions ? [body.chronicConditions] : []);
 
     // 4. Past Medical History
+    interface PastHistoryInput {
+      date?: string;
+      encounterDate?: string;
+      time?: string;
+      hospital_name?: string;
+      hospitalName?: string;
+      department?: string;
+      doctor_name?: string;
+      doctorName?: string;
+      visit_type?: string;
+      visitType?: string;
+      diagnosis?: string;
+      condition?: string;
+      treatment?: string;
+      prescription?: string;
+      notes?: string;
+      clinicalNotes?: string;
+    }
+
+    interface UploadedDocInput {
+      id?: string;
+      name?: string;
+      fileName?: string;
+      type?: string;
+      documentType?: string;
+      sizeBytes?: number;
+      fileSize?: number;
+      dataUrl?: string;
+      fileUrl?: string;
+      uploadedAt?: string;
+    }
+
     const pastHistory = Array.isArray(body.pastHistory)
-      ? body.pastHistory.map((item: any) => ({
+      ? (body.pastHistory as PastHistoryInput[]).map((item) => ({
           date: item.date || item.encounterDate || "Historical",
           time: item.time || "10:00 AM",
           hospital_name: item.hospital_name || item.hospitalName || "Prior Clinic / Hospital",
@@ -59,7 +91,19 @@ export async function POST(request: Request) {
         }))
       : [];
 
-    // 5. Register in Global Store and Generate Unique MediBase ID
+    // 5. Uploaded Medical Documents & Images
+    const uploadedDocuments = Array.isArray(body.uploadedDocuments)
+      ? (body.uploadedDocuments as UploadedDocInput[]).map((doc, idx) => ({
+          id: doc.id || `doc-${Date.now()}-${idx}`,
+          name: doc.name || doc.fileName || `Medical_Document_${idx + 1}.pdf`,
+          type: doc.type || doc.documentType || "diagnostic_file",
+          sizeBytes: doc.sizeBytes || doc.fileSize || 250000,
+          dataUrl: doc.dataUrl || doc.fileUrl || "",
+          uploadedAt: doc.uploadedAt || new Date().toISOString(),
+        }))
+      : [];
+
+    // 6. Register in Global Store and Generate Unique MediBase ID
     const registeredPatient = registerNewPatient({
       full_name: fullName,
       phone_number: phoneNumber,
@@ -84,11 +128,15 @@ export async function POST(request: Request) {
       },
       chronic_conditions: chronicConditions,
       past_history: pastHistory,
+      uploaded_documents: uploadedDocuments,
     });
 
-    // 6. Best-effort Supabase DB Sync
+    // 6. Supabase Relational Database Sync
+    let dbSynced = false;
     try {
       const supabase = await createClient();
+
+      // 6a. Upsert Profile
       await supabase.from("profiles").upsert({
         id: registeredPatient.id,
         email: email,
@@ -97,6 +145,7 @@ export async function POST(request: Request) {
         phone_number: phoneNumber,
       });
 
+      // 6b. Upsert Patient Identity
       await supabase.from("patients").upsert({
         id: registeredPatient.id,
         profile_id: registeredPatient.id,
@@ -106,8 +155,108 @@ export async function POST(request: Request) {
         gender: gender,
         occupation: occupation,
       });
-    } catch {
-      // Non-blocking fallback
+
+      // 6c. Upsert Emergency Contact
+      await supabase.from("emergency_contacts").upsert({
+        patient_id: registeredPatient.id,
+        name: emergencyContactName,
+        relationship: emergencyContactRelationship,
+        phone_number: emergencyContactPhone,
+        is_primary: true,
+      });
+
+      // 6d. Upsert Medical Profile with Vitals & Allergies
+      await supabase.from("medical_profiles").upsert({
+        patient_id: registeredPatient.id,
+        blood_group: bloodGroup,
+        allergies: allergies,
+        chronic_conditions: chronicConditions,
+        height_cm: parseFloat(height) || null,
+        weight_kg: parseFloat(weight) || null,
+        baseline_vitals: {
+          pulse,
+          blood_pressure: bloodPressure,
+          temperature,
+          spo2,
+        },
+      });
+
+      // 6e. Insert Initial & Past Encounters into Encounters Table
+      if (pastHistory.length > 0) {
+        for (let i = 0; i < pastHistory.length; i++) {
+          const hist = pastHistory[i];
+          const encounterId = `enc-db-${registeredPatient.medibase_id.toLowerCase()}-${i + 1}`;
+
+          await supabase.from("encounters").upsert({
+            id: encounterId,
+            patient_id: registeredPatient.id,
+            encounter_date: hist.date,
+            visit_type: hist.visit_type,
+            department: hist.department,
+            chief_complaint: hist.diagnosis,
+            clinical_notes: hist.notes || `Historical encounter at ${hist.hospital_name}`,
+          });
+
+          if (hist.diagnosis) {
+            await supabase.from("diagnoses").upsert({
+              encounter_id: encounterId,
+              diagnosis_name: hist.diagnosis,
+              diagnosis_type: "primary",
+              clinical_status: "resolved",
+            });
+          }
+
+          if (hist.treatment) {
+            await supabase.from("prescriptions").upsert({
+              encounter_id: encounterId,
+              medication_name: hist.treatment,
+              dosage: "As prescribed",
+              frequency: "Historical regimen",
+              is_active: false,
+            });
+          }
+        }
+      }
+
+      // 6f. Insert Uploaded Medical Documents & Images into medical_reports Table
+      if (uploadedDocuments.length > 0) {
+        for (let j = 0; j < uploadedDocuments.length; j++) {
+          const doc = uploadedDocuments[j];
+          await supabase.from("medical_reports").upsert({
+            id: `rep-db-${registeredPatient.medibase_id.toLowerCase()}-${j + 1}`,
+            patient_id: registeredPatient.id,
+            hospital_id: "a0000000-0000-0000-0000-000000000001",
+            uploaded_by_staff_id: "b0000000-0000-0000-0000-000000000001",
+            report_title: doc.name,
+            report_type: doc.type,
+            file_name: doc.name,
+            file_size_bytes: doc.sizeBytes,
+            mime_type: doc.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg",
+            storage_path: `medical-records/${registeredPatient.medibase_id}/${doc.name}`,
+          });
+        }
+      }
+
+      // 6g. Record Audit Log in Database
+      await supabase.from("audit_logs").insert({
+        actor_profile_id: registeredPatient.id,
+        actor_role: "patient",
+        patient_id: registeredPatient.id,
+        hospital_id: "a0000000-0000-0000-0000-000000000001",
+        action: "patient_account_registered",
+        resource_type: "patient_profile",
+        resource_id: registeredPatient.id,
+        metadata: {
+          medibase_id: registeredPatient.medibase_id,
+          full_name: fullName,
+          blood_group: bloodGroup,
+          encounters_initialized: pastHistory.length + 1,
+        },
+      });
+
+      dbSynced = true;
+    } catch (dbErr) {
+      console.warn("Supabase database sync completed with in-memory fallback:", dbErr);
     }
 
     const response = NextResponse.json({

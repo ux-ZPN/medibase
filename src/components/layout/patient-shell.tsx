@@ -42,7 +42,7 @@ export function PatientShell({
     loadUser();
   }, []);
 
-  const patientName = profile?.full_name || "Rahul Sharma";
+  const patientName = profile?.full_name || (profile?.patient_data?.medibase_id ? `Patient (${profile.patient_data.medibase_id})` : "Patient Profile");
   const initials = patientName
     .split(" ")
     .map((n) => n[0])

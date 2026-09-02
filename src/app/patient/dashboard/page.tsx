@@ -74,8 +74,8 @@ export default function PatientDashboardPage() {
     loadTimeline();
   }, []);
 
-  const patientName = profile?.full_name || "Rahul Sharma";
-  const medibaseId = profile?.patient_data?.medibase_id || "MB-102394";
+  const patientName = profile?.full_name || (profile?.patient_data?.medibase_id ? `Patient (${profile.patient_data.medibase_id})` : "Patient Profile");
+  const medibaseId = profile?.patient_data?.medibase_id || "MB-100001";
   const latestEncounter = encounters[0];
   const activePrescriptionsCount = encounters.flatMap((e) => e.prescriptions || []).filter((p) => p.is_active !== false).length;
   const totalReportsCount = encounters.flatMap((e) => e.reports || []).length;

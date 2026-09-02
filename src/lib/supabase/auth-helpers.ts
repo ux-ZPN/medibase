@@ -187,6 +187,19 @@ function getActivePatientIdFromCookie(): string | null {
  * Never relies on unauthenticated client-provided parameters.
  */
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
+  // 1. If running in the browser, always fetch the active profile from the server endpoint
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success && data.profile) {
+        return data.profile;
+      }
+    } catch {
+      // Fall through to local resolver if fetch fails
+    }
+  }
+
   const demoRole = getDemoCookieRole();
   const activePatientId = getActivePatientIdFromCookie();
 
@@ -202,39 +215,23 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
         return KNOWN_PATIENTS_MAP[activePatientId];
       }
       if (activePatientId) {
-        try {
-          const { findRegisteredPatient } = require("@/lib/identity/access-requests-store");
-          const reg = findRegisteredPatient(activePatientId);
-          if (reg) {
-            return {
-              id: reg.id,
-              email: reg.email || `${reg.medibase_id.toLowerCase()}@medibase.org`,
-              role: "patient",
-              full_name: reg.full_name,
-              phone_number: reg.phone_number,
-              patient_data: {
-                id: reg.id,
-                medibase_id: reg.medibase_id,
-                qr_code_token: `token-${reg.medibase_id.toLowerCase()}`,
-                aadhaar_last4: "8899",
-                blood_group: reg.blood_group,
-                occupation: reg.occupation,
-                allergies: reg.allergies,
-                chronic_conditions: reg.chronic_conditions,
-                date_of_birth: reg.date_of_birth,
-                gender: reg.gender,
-              },
-            };
-          }
-        } catch {
-          // Non-blocking fallback
-        }
-
         return {
-          ...DEFAULT_PATIENT_PROFILE,
+          id: `patient-${activePatientId.toLowerCase()}`,
+          email: `${activePatientId.toLowerCase()}@medibase.org`,
+          role: "patient",
+          full_name: `Patient ${activePatientId}`,
+          phone_number: "+91 98765 00000",
           patient_data: {
-            ...DEFAULT_PATIENT_PROFILE.patient_data!,
+            id: `patient-${activePatientId.toLowerCase()}`,
             medibase_id: activePatientId,
+            qr_code_token: `token-${activePatientId.toLowerCase()}`,
+            aadhaar_last4: "8899",
+            blood_group: "O+",
+            occupation: "General Citizen",
+            allergies: [],
+            chronic_conditions: [],
+            date_of_birth: "1995-01-01",
+            gender: "Not Specified",
           },
         };
       }
