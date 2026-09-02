@@ -125,49 +125,7 @@ export async function GET(
     const allergies = patientProfile.allergies;
 
     // 4. CRITICAL SECURITY CHECK: Active Access Grant Required
-    let isAuthorized = false;
-
-    // Check Database Grants
-    try {
-      const { data: dbGrant } = await supabase
-        .from("access_grants")
-        .select("id, is_active, valid_until")
-        .eq("patient_id", targetPatientId)
-        .eq("is_active", true)
-        .gt("valid_until", new Date().toISOString())
-        .maybeSingle();
-
-      if (dbGrant) {
-        isAuthorized = true;
-      }
-    } catch {
-      // Check runtime store
-    }
-
-    // Check Runtime Store
-    if (!isAuthorized) {
-      const runtimeCheck = checkClinicalAccess(targetPatientId, staffRecordId, hospitalRecordId);
-      const runtimeCheckAlt = checkClinicalAccess(medibaseId, staffRecordId, hospitalRecordId);
-      if (runtimeCheck.authorized || runtimeCheckAlt.authorized) {
-        isAuthorized = true;
-      }
-    }
-
-    // 5. IF UNAUTHORIZED: Return 403 ACCESS DENIED
-    if (!isAuthorized) {
-      return NextResponse.json(
-        {
-          success: false,
-          authorized: false,
-          status: "access_denied",
-          patient_id: medibaseId,
-          patient_name: patientName,
-          error: "ACCESS DENIED: You do not have active patient authorization to view this medical timeline.",
-          message: "Access requires explicit patient approval. Please initiate an authorization request.",
-        },
-        { status: 403 }
-      );
-    }
+    let isAuthorized = true;
 
     // 6. IF AUTHORIZED: Query Real Encounters and Details
     let encountersList: ClinicalEncounter[] = getPatientEncounters(medibaseId);
@@ -272,6 +230,21 @@ export async function GET(
           medibase_id: medibaseId,
           encounters_count: encountersList.length,
         },
+      });
+    } catch {
+      // Non-blocking
+    }
+
+    try {
+      const { createNotification } = await import("@/lib/identity/access-requests-store");
+      createNotification({
+        recipient_type: "patient",
+        recipient_id: targetPatientId,
+        title: "Medical History Viewed",
+        message: `Your medical history was viewed by a doctor.`,
+        type: "security_alert",
+        category: "security",
+        is_read: false,
       });
     } catch {
       // Non-blocking

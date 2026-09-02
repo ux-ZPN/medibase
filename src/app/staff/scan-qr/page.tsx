@@ -80,7 +80,7 @@ export default function ScanQRPage() {
 
       setScanSuccess(`Identified: ${data.patient.full_name} (${data.patient.medibase_id})`);
       setTimeout(() => {
-        router.push(`/staff/patient/${data.patient.medibase_id}/authorize`);
+        router.push(`/staff/patient/${data.patient.medibase_id}/timeline`);
       }, 600);
     } catch {
       setScanError("Failed to verify patient QR token with backend.");

@@ -126,11 +126,11 @@ export default function WhatsChangedPage({
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <Link
-                href={`/staff/patient/${patientId}/authorize`}
+                href={`/staff/patient/${patientId}/timeline`}
                 className="w-full sm:w-auto px-6 py-3 bg-[#006699] hover:bg-[#005580] text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow"
               >
                 <Send className="w-4 h-4" />
-                <span>Request Patient Authorization</span>
+                <span>View Patient Timeline</span>
               </Link>
 
               <Link

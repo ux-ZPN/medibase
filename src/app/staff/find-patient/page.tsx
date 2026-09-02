@@ -304,10 +304,10 @@ export default function FindPatientPage() {
 
               <div className="flex items-center gap-2 shrink-0">
                 <Link
-                  href={`/staff/patient/${identifiedPatient.medibase_id}/authorize`}
+                  href={`/staff/patient/${identifiedPatient.medibase_id}/timeline`}
                   className="px-5 py-2.5 bg-[#006699] hover:bg-[#005580] text-white font-semibold text-xs rounded-lg transition-colors shadow-sm flex items-center gap-1.5 text-center"
                 >
-                  <span>Request Access</span>
+                  <span>View Timeline</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
