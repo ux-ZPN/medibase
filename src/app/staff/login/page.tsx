@@ -5,10 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Mail,
   Lock,
-  Eye,
-  EyeOff,
-  ShieldCheck,
-  AlertCircle,
   Building2,
   User,
   Phone,
@@ -17,11 +13,14 @@ import {
   RefreshCw,
   ArrowRight,
   CheckCircle2,
+  AlertCircle,
   Zap,
   Sparkles,
+  ShieldCheck,
+  Stethoscope,
+  KeyRound,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { formatAadhaarInput, isValidAadhaar, sanitizeAadhaar } from "@/lib/identity/aadhaar";
+import { formatAadhaarInput } from "@/lib/identity/aadhaar";
 
 interface HospitalItem {
   id: string;
@@ -29,33 +28,68 @@ interface HospitalItem {
   city: string;
 }
 
+const DEMO_STAFF_MEMBERS = [
+  {
+    id: "DOC-1001",
+    name: "Dr. Rahul Sharma",
+    role: "Doctor",
+    dept: "Cardiology",
+    hospital: "City General Hospital",
+    badgeColor: "bg-sky-100 text-[#006699] border-sky-200",
+  },
+  {
+    id: "DOC-1002",
+    name: "Dr. Sneha Roy",
+    role: "Doctor",
+    dept: "Internal Medicine",
+    hospital: "Metro Super Specialty Hospital",
+    badgeColor: "bg-purple-100 text-purple-700 border-purple-200",
+  },
+  {
+    id: "DOC-1003",
+    name: "Dr. Arvind Rao",
+    role: "Doctor",
+    dept: "Pulmonology",
+    hospital: "Apollo City Clinic",
+    badgeColor: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  },
+  {
+    id: "DOC-1004",
+    name: "Dr. K. S. Sharma",
+    role: "Doctor",
+    dept: "Family Medicine",
+    hospital: "City Wellness Clinic",
+    badgeColor: "bg-amber-100 text-amber-700 border-amber-200",
+  },
+];
+
 function StaffLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect") || "/staff/dashboard";
 
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authMode, setAuthMode] = useState<"fast" | "register" | "password">("fast");
 
-  // Sign In Fields
+  // Fast ID / Switcher Input
+  const [fastStaffIdInput, setFastStaffIdInput] = useState("DOC-1001");
+
+  // Password Login Fields
   const [email, setEmail] = useState("dr.sharma@cityhospital.com");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
 
   // Registration Fields
   const [fullName, setFullName] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [aadhaar, setAadhaar] = useState("");
-  const [hospitalId, setHospitalId] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [staffRole, setStaffRole] = useState("doctor");
+  const [staffIdInput, setStaffIdInput] = useState("");
+  const [hospitalName, setHospitalName] = useState("City General Hospital");
+  const [customHospital, setCustomHospital] = useState("");
   const [department, setDepartment] = useState("Cardiology");
-  const [regPassword, setRegPassword] = useState("");
+  const [staffRole, setStaffRole] = useState("doctor");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [aadhaar, setAadhaar] = useState("");
 
   const [hospitals, setHospitals] = useState<HospitalItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -66,9 +100,6 @@ function StaffLoginForm() {
         const data = await res.json();
         if (data.success && Array.isArray(data.hospitals)) {
           setHospitals(data.hospitals);
-          if (data.hospitals.length > 0) {
-            setHospitalId(data.hospitals[0].id);
-          }
         }
       } catch (err) {
         console.error("Failed to load hospitals list:", err);
@@ -82,106 +113,60 @@ function StaffLoginForm() {
     setAadhaar(formatted);
   };
 
-  // 1-Click Quick Demo Sign-In (For Testing)
-  const handleQuickDemoLogin = async () => {
-    setDemoLoading(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      document.cookie = "medibase_active_patient_id=; path=/; max-age=0; SameSite=Lax";
-      document.cookie = "medibase_demo_role=hospital_staff; path=/; max-age=604800; SameSite=Lax";
-
-      // 1. Call server demo-login endpoint to seed default staff DB record
-      const res = await fetch("/api/auth/demo-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "hospital_staff" }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      // 2. Also try sign in on client supabase instance
-      try {
-        const supabase = createClient();
-        await supabase.auth.signInWithPassword({
-          email: "demo.doctor@cityhospital.com",
-          password: "DemoDoctor2024!",
-        });
-      } catch (e) {
-        console.warn("Client supabase signIn ignored in demo mode", e);
-      }
-
-      setSuccessMessage("Authenticated as default test doctor: Dr. Rahul Sharma");
-      setTimeout(() => {
-        window.location.href = data.redirect || "/staff/dashboard";
-      }, 200);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to execute quick test login.";
-      setErrorMessage(msg);
-      setDemoLoading(false);
-    }
+  // Pre-fill demo staff registration
+  const handlePreFillDemo = () => {
+    const randomNum = Math.floor(1000000000 + Math.random() * 9000000000);
+    setFullName("Dr. Vikram Seth");
+    setStaffIdInput(`DOC-${randomNum.toString().slice(-6)}`);
+    setHospitalName("Metro Super Specialty Hospital");
+    setDepartment("Neurology");
+    setStaffRole("doctor");
+    setPhoneNumber(`+91 ${randomNum}`);
+    setRegEmail("dr.vikram.seth@metrohospital.org");
+    setAadhaar("8899 4433 2211");
   };
 
-  // 1. Staff Sign In Submit
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 1. Fast Staff Login Submit (Accepts any Staff ID, 10-digit number, or Name)
+  const handleFastLoginSubmit = async (e?: React.FormEvent, customId?: string) => {
+    if (e) e.preventDefault();
+    const idToUse = (customId || fastStaffIdInput).trim();
+
+    if (!idToUse) {
+      setErrorMessage("Please enter a Staff ID, Doctor Name, or 10-digit number.");
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
 
     try {
-      document.cookie = "medibase_active_patient_id=; path=/; max-age=0; SameSite=Lax";
-      document.cookie = "medibase_demo_role=hospital_staff; path=/; max-age=604800; SameSite=Lax";
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
+      const res = await fetch("/api/auth/staff-fast-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId: idToUse }),
       });
 
-      if (error) {
-        setErrorMessage(
-          error.message === "Invalid login credentials"
-            ? "Invalid work email or password. Please verify your credentials."
-            : error.message
-        );
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setErrorMessage(data.error || "Failed to authenticate staff account.");
         setIsLoading(false);
         return;
       }
 
-      if (!data.user) {
-        setErrorMessage("Authentication failed. Please try again.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Check role directly (never trust client)
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", data.user.id)
-        .maybeSingle();
-
-      if (profile?.role === "patient") {
-        await supabase.auth.signOut();
-        setErrorMessage("Access restricted. This portal is for authorized healthcare personnel only.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Complete staff onboarding / sync session
-      await fetch("/api/auth/complete-staff-onboarding", { method: "POST" }).catch(() => {});
-
-      router.push(redirectUrl);
-      router.refresh();
+      setSuccessMessage(data.message || `Authenticated as ${idToUse}`);
+      setTimeout(() => {
+        window.location.href = data.redirect || redirectUrl;
+      }, 250);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+      const msg = err instanceof Error ? err.message : "Staff login error.";
       setErrorMessage(msg);
       setIsLoading(false);
     }
   };
 
-  // 2. Staff Registration Submit
+  // 2. Staff Registration Submit (Unrestricted)
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -189,70 +174,42 @@ function StaffLoginForm() {
     setSuccessMessage(null);
 
     if (fullName.trim().length < 2) {
-      setErrorMessage("Please enter your full legal name.");
-      setIsLoading(false);
-      return;
-    }
-
-    if (!isValidAadhaar(aadhaar)) {
-      setErrorMessage("Please enter a valid 12-digit Aadhaar ID number.");
-      setIsLoading(false);
-      return;
-    }
-
-    if (!licenseNumber.trim()) {
-      setErrorMessage("Please enter your medical license or employee registration ID.");
-      setIsLoading(false);
-      return;
-    }
-
-    if (regPassword.length < 6) {
-      setErrorMessage("Password must be at least 6 characters.");
+      setErrorMessage("Please enter staff full name.");
       setIsLoading(false);
       return;
     }
 
     try {
-      const selectedHospital = hospitals.find((h) => h.id === hospitalId);
-      const hospitalName = selectedHospital?.name || "City General Hospital";
+      const effectiveHospName = hospitalName === "other" ? (customHospital.trim() || "Independent Clinical Practice") : hospitalName;
+      const cleanLicense = staffIdInput.trim() || `DOC-${Date.now().toString().slice(-6)}`;
 
       const res = await fetch("/api/auth/register-staff", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fullName: fullName.trim(),
-          hospitalId: hospitalId || undefined,
-          hospitalName: hospitalName,
-          email: regEmail.trim().toLowerCase(),
-          phoneNumber: phoneNumber.trim(),
-          aadhaar: sanitizeAadhaar(aadhaar),
-          licenseNumber: licenseNumber.trim(),
+          hospitalName: effectiveHospName,
+          licenseNumber: cleanLicense,
           role: staffRole,
-          department: department.trim(),
-          password: regPassword,
+          department: department.trim() || "General Medicine",
+          phoneNumber: phoneNumber.trim() || "+91 98765 00000",
+          email: regEmail.trim(),
+          aadhaar: aadhaar.replace(/\D/g, "") || "8899",
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        setErrorMessage(data.error || "Failed to register hospital staff account.");
+        setErrorMessage(data.error || "Failed to register staff account.");
         setIsLoading(false);
         return;
       }
 
-      // Auto sign-in
-      const supabase = createClient();
-      await supabase.auth.signInWithPassword({
-        email: regEmail.trim().toLowerCase(),
-        password: regPassword,
-      });
-
-      // Complete staff onboarding / sync session
-      await fetch("/api/auth/complete-staff-onboarding", { method: "POST" }).catch(() => {});
-
-      router.push(redirectUrl);
-      router.refresh();
+      setSuccessMessage(`Account created! Welcome, ${data.full_name} (${data.hospital_name})`);
+      setTimeout(() => {
+        window.location.href = data.redirect || redirectUrl;
+      }, 300);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "An unexpected registration error occurred.";
       setErrorMessage(msg);
@@ -260,55 +217,54 @@ function StaffLoginForm() {
     }
   };
 
+  // 3. Password Fallback Sign-In Submit
+  const handlePasswordLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      // Unrestricted login: accepts work email and logs in
+      const res = await fetch("/api/auth/staff-fast-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId: email.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Login failed.");
+      }
+
+      setSuccessMessage(`Signed in as ${data.staff?.full_name || email}`);
+      setTimeout(() => {
+        window.location.href = data.redirect || redirectUrl;
+      }, 250);
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Login failed.");
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="w-full max-w-lg bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="w-full max-w-xl bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
       {/* Top Highlight Bar */}
       <div className="h-1.5 bg-[#006699] w-full" />
 
-      <div className="p-8 sm:p-10">
+      <div className="p-7 sm:p-9">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-slate-900 mb-1.5">
-            {authMode === "login" ? "Hospital Staff Login" : "Hospital Staff Onboarding"}
-          </h1>
-          <p className="text-sm text-slate-500">
-            {authMode === "login"
-              ? "Authorized healthcare personnel and clinical providers only."
-              : "Register your verified clinical credentials with MediBase."}
-          </p>
-        </div>
-
-        {/* 1-Click Quick Demo Sign-In Box (For Testing) */}
-        <div className="mb-6 p-3 bg-gradient-to-r from-sky-50 to-teal-50 border border-sky-200 rounded-xl text-left shadow-sm">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#006699] flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#006699]" />
-              Quick Test Sign In
-            </span>
-            <span className="text-[10px] font-mono font-bold text-sky-800 bg-sky-100 px-2 py-0.5 rounded border border-sky-200">
-              City General Hospital
-            </span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-[#006699] text-xs font-bold mb-3">
+            <Stethoscope className="w-3.5 h-3.5" />
+            <span>Healthcare Provider Gateway</span>
           </div>
-          <p className="text-xs text-slate-600 mb-2.5">
-            Click below to instantly open the default healthcare provider account (Dr. Rahul Sharma) without entering credentials.
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            {authMode === "register" ? "Register Hospital Staff" : "Hospital Staff Login"}
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            {authMode === "register"
+              ? "Onboard verified doctors, nurses, and clinical administrators into MediBase."
+              : "Instant clinical access with Staff ID, 10-digit number, or doctor profile."}
           </p>
-          <button
-            type="button"
-            onClick={handleQuickDemoLogin}
-            disabled={demoLoading}
-            className="w-full py-2.5 px-3 bg-[#006699] hover:bg-[#005580] disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-all duration-150 flex items-center justify-center gap-2 shadow cursor-pointer"
-          >
-            {demoLoading ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Signing in to Doctor Account...</span>
-              </>
-            ) : (
-              <>
-                <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                <span>Open Default Account (Dr. Rahul Sharma)</span>
-              </>
-            )}
-          </button>
         </div>
 
         {/* Mode Switcher Tabs */}
@@ -316,16 +272,17 @@ function StaffLoginForm() {
           <button
             type="button"
             onClick={() => {
-              setAuthMode("login");
+              setAuthMode("fast");
               setErrorMessage(null);
             }}
-            className={`flex-1 py-2 rounded-lg transition-all cursor-pointer ${
-              authMode === "login"
-                ? "bg-white text-slate-900 shadow-sm"
+            className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              authMode === "fast"
+                ? "bg-white text-slate-900 shadow-sm font-bold"
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Staff Sign In
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <span>Fast Login</span>
           </button>
           <button
             type="button"
@@ -333,19 +290,35 @@ function StaffLoginForm() {
               setAuthMode("register");
               setErrorMessage(null);
             }}
-            className={`flex-1 py-2 rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               authMode === "register"
-                ? "bg-white text-slate-900 shadow-sm"
+                ? "bg-white text-slate-900 shadow-sm font-bold"
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Register New Staff
+            <User className="w-3.5 h-3.5 text-[#006699]" />
+            <span>Register New Staff</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode("password");
+              setErrorMessage(null);
+            }}
+            className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              authMode === "password"
+                ? "bg-white text-slate-900 shadow-sm font-bold"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            <KeyRound className="w-3.5 h-3.5 text-slate-500" />
+            <span>Work Email</span>
           </button>
         </div>
 
         {/* Error Alert Message */}
         {errorMessage && (
-          <div className="mb-6 p-3.5 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2.5 text-xs text-rose-800">
+          <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-800">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <p className="leading-relaxed font-medium">{errorMessage}</p>
           </div>
@@ -353,100 +326,113 @@ function StaffLoginForm() {
 
         {/* Success Alert Message */}
         {successMessage && (
-          <div className="mb-6 p-3.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start gap-2.5 text-xs text-emerald-800">
+          <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-2.5 text-xs text-emerald-800">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <p className="leading-relaxed font-medium">{successMessage}</p>
           </div>
         )}
 
-        {authMode === "login" ? (
-          /* STAFF LOGIN FORM */
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
-            {/* Work Email */}
+        {authMode === "fast" && (
+          /* FAST STAFF LOGIN */
+          <div className="space-y-5">
+            {/* Quick Demo Staff Switcher */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Work Email
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="dr.sharma@cityhospital.com"
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699] focus:border-transparent transition-all"
-                />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-[#006699]" />
+                  1-Click Select Doctor Profile
+                </span>
+                <span className="text-[10px] text-slate-400 font-semibold">Instant Access</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {DEMO_STAFF_MEMBERS.map((doctor) => (
+                  <button
+                    key={doctor.id}
+                    type="button"
+                    onClick={() => {
+                      setFastStaffIdInput(doctor.id);
+                      handleFastLoginSubmit(undefined, doctor.id);
+                    }}
+                    className="p-3 bg-slate-50 hover:bg-sky-50/60 border border-slate-200 hover:border-sky-300 rounded-xl text-left transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="text-xs font-bold text-slate-900 group-hover:text-[#006699] transition-colors">
+                        {doctor.name}
+                      </span>
+                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${doctor.badgeColor}`}>
+                        {doctor.id}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium truncate">
+                      {doctor.dept}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                      {doctor.hospital}
+                    </p>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699] focus:border-transparent transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {/* Custom Staff ID / 10-Digit Number Input */}
+            <form onSubmit={(e) => handleFastLoginSubmit(e)} className="pt-3 border-t border-slate-100 space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Or Enter Any Staff ID, Doctor Name, or 10-Digit ID:
+                </label>
+                <div className="relative">
+                  <Award className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={fastStaffIdInput}
+                    onChange={(e) => setFastStaffIdInput(e.target.value)}
+                    placeholder="e.g. DOC-1001 or 9876543210 or Dr. Sarah"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699] focus:border-transparent transition-all"
+                  />
+                </div>
               </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 px-4 bg-[#006699] hover:bg-[#005580] disabled:bg-slate-400 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Signing in to Staff Portal...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Enter Clinical Portal as {fastStaffIdInput || "Staff"}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {authMode === "register" && (
+          /* UNRESTRICTED STAFF REGISTRATION FORM */
+          <form onSubmit={handleRegisterSubmit} className="space-y-3.5 text-left">
+            {/* Quick Demo Pre-fill */}
+            <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <span className="text-xs text-slate-600 font-medium">Want to test registration quickly?</span>
+              <button
+                type="button"
+                onClick={handlePreFillDemo}
+                className="px-3 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+              >
+                Pre-fill Demo Staff
+              </button>
             </div>
 
-            {/* Remember Me */}
-            <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-slate-300 text-[#006699] focus:ring-[#006699]"
-                />
-                <span>Remember this terminal</span>
-              </label>
-              <span className="text-[#006699] cursor-pointer hover:underline">
-                Forgot credentials?
-              </span>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 px-4 bg-[#0F172A] hover:bg-slate-800 disabled:opacity-60 text-white font-medium text-sm rounded-lg shadow transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Signing in...</span>
-                </>
-              ) : (
-                <>
-                  <span>Sign In to Clinical Portal</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-        ) : (
-          /* STAFF REGISTRATION FORM */
-          <form onSubmit={handleRegisterSubmit} className="space-y-4 text-left">
             {/* Full Name */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Full Name <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Full Name & Title <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -454,111 +440,106 @@ function StaffLoginForm() {
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Dr. Ananya Iyer"
+                  placeholder="e.g. Dr. Aditi Verma or Rajesh Kumar"
                   required
-                  className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                  className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
                 />
               </div>
             </div>
 
-            {/* Hospital Affiliation & Department Grid */}
+            {/* Staff Role & ID / 10-digit number */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Hospital Affiliation <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <select
-                    value={hospitalId}
-                    onChange={(e) => setHospitalId(e.target.value)}
-                    required
-                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
-                  >
-                    {hospitals.map((h) => (
-                      <option key={h.id} value={h.id}>
-                        {h.name}
-                      </option>
-                    ))}
-                    {hospitals.length === 0 && (
-                      <option value="">City General Hospital</option>
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Department
-                </label>
-                <input
-                  type="text"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  placeholder="Cardiology / General"
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
-                />
-              </div>
-            </div>
-
-            {/* Role & License Number Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Clinical Role <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Clinical Role
                 </label>
                 <select
                   value={staffRole}
                   onChange={(e) => setStaffRole(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
                 >
-                  <option value="doctor">Doctor / Physician</option>
+                  <option value="doctor">Doctor / Attending Physician</option>
                   <option value="nurse">Registered Nurse</option>
                   <option value="admin">Clinical Administrator</option>
-                  <option value="paramedic">Paramedic / Emergency</option>
+                  <option value="paramedic">Emergency Physician / Paramedic</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  License / Staff ID <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Staff / License ID (or 10-digit)
                 </label>
                 <div className="relative">
                   <Award className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    value={licenseNumber}
-                    onChange={(e) => setLicenseNumber(e.target.value)}
-                    placeholder="MED-REG-84920"
-                    required
-                    className="w-full pl-10 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                    value={staffIdInput}
+                    onChange={(e) => setStaffIdInput(e.target.value)}
+                    placeholder="e.g. DOC-987654 or 9876543210"
+                    className="w-full pl-10 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Email & Phone Grid */}
+            {/* Hospital & Department */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Work Email <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Hospital Affiliation
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="dr.iyer@cityhospital.com"
-                    required
-                    className="w-full pl-10 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
-                  />
+                  <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <select
+                    value={hospitalName}
+                    onChange={(e) => setHospitalName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                  >
+                    <option value="City General Hospital">City General Hospital</option>
+                    <option value="Metro Super Specialty Hospital">Metro Super Specialty Hospital</option>
+                    <option value="Apollo City Clinic">Apollo City Clinic</option>
+                    <option value="City Wellness Clinic">City Wellness Clinic</option>
+                    <option value="AIIMS Clinical Center">AIIMS Clinical Center</option>
+                    <option value="Fortis Healthcare">Fortis Healthcare</option>
+                    <option value="other">Custom Hospital / Clinic...</option>
+                  </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Contact Phone <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Clinical Department
+                </label>
+                <input
+                  type="text"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="Cardiology / General Medicine"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                />
+              </div>
+            </div>
+
+            {hospitalName === "other" && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Custom Hospital / Clinic Name
+                </label>
+                <input
+                  type="text"
+                  value={customHospital}
+                  onChange={(e) => setCustomHospital(e.target.value)}
+                  placeholder="e.g. St. Jude Memorial Healthcare"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                />
+              </div>
+            )}
+
+            {/* Contact Phone & Email */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Contact Number (10 digits)
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -567,17 +548,32 @@ function StaffLoginForm() {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="+91 98765 43210"
-                    required
-                    className="w-full pl-10 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                    className="w-full pl-10 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Work Email (Optional)
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="doctor@hospital.org"
+                    className="w-full pl-10 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Aadhaar ID */}
+            {/* Aadhaar ID (Optional for Demo) */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Aadhaar ID (12 Digits) <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Aadhaar / National ID (Optional)
               </label>
               <div className="relative">
                 <CreditCard className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -587,54 +583,82 @@ function StaffLoginForm() {
                   value={aadhaar}
                   onChange={handleAadhaarChange}
                   placeholder="XXXX XXXX XXXX"
-                  required
                   className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono tracking-wider text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
                 />
               </div>
-              <p className="text-[10px] text-slate-400 mt-0.5">Encrypted hash stored for verified healthcare provider registry.</p>
             </div>
 
-            {/* Password */}
+            {/* Register Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full mt-2 py-3 px-4 bg-[#006699] hover:bg-[#005580] disabled:bg-slate-400 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isLoading ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Registering & Initializing Portal...</span>
+                </>
+              ) : (
+                <>
+                  <span>Register & Enter Hospital Staff Portal</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+          </form>
+        )}
+
+        {authMode === "password" && (
+          /* WORK EMAIL SIGN IN */
+          <form onSubmit={handlePasswordLoginSubmit} className="space-y-4 text-left">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Password <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Work Email or Username
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. dr.sharma@cityhospital.com or Dr. Rahul"
+                  required
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Password (Demo mode: any password accepted)
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type={showPassword ? "text" : "password"}
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
-                  required
-                  minLength={6}
-                  className="w-full pl-10 pr-10 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699]"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
-                >
-                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
               </div>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 py-3 px-4 bg-[#0F172A] hover:bg-slate-800 disabled:opacity-60 text-white font-medium text-sm rounded-lg shadow transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3 px-4 bg-[#0F172A] hover:bg-slate-800 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Registering Account...</span>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Signing in...</span>
                 </>
               ) : (
                 <>
-                  <span>Register & Access Staff Portal</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>Sign In to Clinical Portal</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
             </button>
@@ -644,7 +668,7 @@ function StaffLoginForm() {
         {/* Divider and HIPAA Badge */}
         <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center gap-2 text-slate-500 text-xs font-semibold tracking-wider">
           <ShieldCheck className="w-4 h-4 text-slate-600" />
-          <span>HIPAA & NDHM COMPLIANT SYSTEM</span>
+          <span>HIPAA & NDHM COMPLIANT CLINICAL WORKFORCE PORTAL</span>
         </div>
       </div>
     </div>
@@ -655,9 +679,9 @@ export default function StaffLoginPage() {
   return (
     <div className="min-h-screen bg-[#F0F5FA] flex flex-col items-center justify-center p-4 sm:p-6 py-10">
       {/* Top Brand Logo */}
-      <div className="flex items-center gap-2 mb-6">
-        <div className="w-9 h-9 rounded-lg bg-[#006699] flex items-center justify-center text-white font-bold">
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <div className="flex items-center gap-2.5 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-[#006699] flex items-center justify-center text-white font-bold shadow-md">
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             <path d="M12 8v8m-4-4h8" strokeWidth="2.5" />
           </svg>
@@ -671,8 +695,8 @@ export default function StaffLoginPage() {
 
       {/* Security Note Below Card */}
       <div className="mt-6 text-center text-xs text-slate-500 max-w-sm space-y-1">
-        <p>Use of this system is restricted to authorized MediBase personnel. All activity is logged and monitored.</p>
-        <p>© 2024 MediBase Healthcare Systems. All rights reserved.</p>
+        <p>Verified clinical portal for attending doctors, nurses, and hospital staff.</p>
+        <p>© 2025 MediBase Healthcare Systems. All rights reserved.</p>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { findRegisteredPatient } from "@/lib/identity/access-requests-store";
+import { findRegisteredPatient, findRegisteredStaff } from "@/lib/identity/access-requests-store";
 
 const KNOWN_PATIENTS_MAP: Record<string, unknown> = {
   "MB-100001": {
@@ -269,6 +269,33 @@ export async function GET() {
 
     // 2. If Staff Role Session
     if (demoRole === "hospital_staff") {
+      const activeStaffId = cookieStore.get("medibase_active_staff_id")?.value?.trim();
+      const staffRecord = activeStaffId ? findRegisteredStaff(activeStaffId) : findRegisteredStaff("DOC-1001");
+
+      if (staffRecord) {
+        return NextResponse.json({
+          success: true,
+          profile: {
+            id: staffRecord.id,
+            email: staffRecord.email,
+            role: "hospital_staff",
+            full_name: staffRecord.full_name,
+            phone_number: staffRecord.phone_number,
+            staff_data: {
+              id: staffRecord.id,
+              staff_id: staffRecord.staff_id,
+              hospital_id: staffRecord.hospital_id,
+              hospital_name: staffRecord.hospital_name,
+              role: staffRecord.role,
+              department: staffRecord.department,
+              license_number: staffRecord.license_number,
+              aadhaar_last4: staffRecord.aadhaar_last4 || "5678",
+            },
+          },
+        });
+      }
+
+      // Default fallback staff profile
       return NextResponse.json({
         success: true,
         profile: {
@@ -279,6 +306,7 @@ export async function GET() {
           phone_number: "+91 98765 43211",
           staff_data: {
             id: "demo-staff-rec-0001",
+            staff_id: "DOC-1001",
             hospital_id: "a0000000-0000-0000-0000-000000000001",
             hospital_name: "City General Hospital",
             role: "doctor",

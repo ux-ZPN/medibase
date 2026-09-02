@@ -187,6 +187,21 @@ export function extractPatientIndex(idOrStr: string): number | null {
   return val >= 100000 ? val - 100000 : val;
 }
 
+export interface StoredStaffRegistration {
+  id: string;
+  staff_id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  hospital_id: string;
+  hospital_name: string;
+  department: string;
+  role: string;
+  license_number: string;
+  aadhaar_last4?: string;
+  created_at: string;
+}
+
 // Global persistent stores across all Next.js route compilation workers
 const globalStore = globalThis as unknown as {
   __medibase_access_requests?: StoredAccessRequest[];
@@ -197,7 +212,69 @@ const globalStore = globalThis as unknown as {
   __medibase_clinical_encounters?: Record<string, ClinicalEncounter[]>;
   __medibase_medical_reports?: StoredMedicalReport[];
   __medibase_registered_patients?: Record<string, StoredPatientRegistration>;
+  __medibase_registered_staff?: Record<string, StoredStaffRegistration>;
 };
+
+if (!globalStore.__medibase_registered_staff) {
+  globalStore.__medibase_registered_staff = {
+    "DOC-1001": {
+      id: "b0000000-0000-0000-0000-000000000001",
+      staff_id: "DOC-1001",
+      full_name: "Dr. Rahul Sharma",
+      email: "dr.sharma@cityhospital.com",
+      phone_number: "+91 98765 43211",
+      hospital_id: "a0000000-0000-0000-0000-000000000001",
+      hospital_name: "City General Hospital",
+      department: "Cardiology",
+      role: "doctor",
+      license_number: "MED-REG-2024-8941",
+      aadhaar_last4: "5678",
+      created_at: new Date().toISOString(),
+    },
+    "DOC-1002": {
+      id: "b0000000-0000-0000-0000-000000000002",
+      staff_id: "DOC-1002",
+      full_name: "Dr. Sneha Roy",
+      email: "sneha.roy@metrospecialty.com",
+      phone_number: "+91 98765 43212",
+      hospital_id: "a0000000-0000-0000-0000-000000000002",
+      hospital_name: "Metro Super Specialty Hospital",
+      department: "Internal Medicine",
+      role: "doctor",
+      license_number: "MED-REG-2023-7712",
+      aadhaar_last4: "3321",
+      created_at: new Date().toISOString(),
+    },
+    "DOC-1003": {
+      id: "b0000000-0000-0000-0000-000000000003",
+      staff_id: "DOC-1003",
+      full_name: "Dr. Arvind Rao",
+      email: "arvind.rao@apolloclinic.com",
+      phone_number: "+91 98765 43213",
+      hospital_id: "a0000000-0000-0000-0000-000000000003",
+      hospital_name: "Apollo City Clinic",
+      department: "Pulmonology",
+      role: "doctor",
+      license_number: "MED-REG-2022-4419",
+      aadhaar_last4: "8899",
+      created_at: new Date().toISOString(),
+    },
+    "DOC-1004": {
+      id: "b0000000-0000-0000-0000-000000000004",
+      staff_id: "DOC-1004",
+      full_name: "Dr. K. S. Sharma",
+      email: "ks.sharma@wellnessclinic.org",
+      phone_number: "+91 98765 43214",
+      hospital_id: "a0000000-0000-0000-0000-000000000004",
+      hospital_name: "City Wellness Clinic",
+      department: "Family Medicine",
+      role: "doctor",
+      license_number: "MED-REG-2021-1120",
+      aadhaar_last4: "4455",
+      created_at: new Date().toISOString(),
+    },
+  };
+}
 
 if (!globalStore.__medibase_registered_patients) {
   globalStore.__medibase_registered_patients = {};
@@ -1768,3 +1845,86 @@ export function getAllRegisteredPatients(): StoredPatientRegistration[] {
   });
   return Array.from(unique.values());
 }
+
+const runtimeRegisteredStaff = globalStore.__medibase_registered_staff!;
+
+export function registerNewStaff(data: {
+  fullName: string;
+  staffId?: string;
+  licenseNumber?: string;
+  hospitalId?: string;
+  hospitalName?: string;
+  department?: string;
+  role?: string;
+  email?: string;
+  phoneNumber?: string;
+  aadhaar?: string;
+}): StoredStaffRegistration {
+  const generatedId = data.staffId || data.licenseNumber || `DOC-${Date.now().toString().slice(-6)}`;
+  const staffUid = `staff-${generatedId.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
+  const now = new Date();
+
+  const regStaff: StoredStaffRegistration = {
+    id: staffUid,
+    staff_id: generatedId,
+    full_name: data.fullName.trim().startsWith("Dr.") || data.role === "nurse" ? data.fullName.trim() : `Dr. ${data.fullName.trim()}`,
+    email: data.email?.trim() || `${data.fullName.toLowerCase().replace(/[^a-z0-9]/g, ".")}@cityhospital.com`,
+    phone_number: data.phoneNumber?.trim() || "+91 98765 00000",
+    hospital_id: data.hospitalId || "a0000000-0000-0000-0000-000000000001",
+    hospital_name: data.hospitalName?.trim() || "City General Hospital",
+    department: data.department?.trim() || "General Medicine",
+    role: data.role?.toLowerCase() || "doctor",
+    license_number: data.licenseNumber?.trim() || generatedId,
+    aadhaar_last4: data.aadhaar ? data.aadhaar.slice(-4) : "5678",
+    created_at: now.toISOString(),
+  };
+
+  runtimeRegisteredStaff[generatedId] = regStaff;
+  runtimeRegisteredStaff[staffUid] = regStaff;
+  if (regStaff.license_number) {
+    runtimeRegisteredStaff[regStaff.license_number] = regStaff;
+  }
+
+  recordAuditLog({
+    actor_name: regStaff.full_name,
+    actor_role: regStaff.role,
+    hospital_name: regStaff.hospital_name,
+    action: "staff_registered",
+    action_label: `New Healthcare Staff Registered (${regStaff.staff_id})`,
+    purpose: "Clinical Workforce Onboarding",
+    patient_id: "SYSTEM",
+    is_emergency: false,
+    access_type: "normal",
+  });
+
+  return regStaff;
+}
+
+export function findRegisteredStaff(query: string): StoredStaffRegistration | undefined {
+  if (!query) return undefined;
+  const clean = query.trim();
+  const cleanUpper = clean.toUpperCase();
+
+  if (runtimeRegisteredStaff[cleanUpper]) return runtimeRegisteredStaff[cleanUpper];
+  if (runtimeRegisteredStaff[clean]) return runtimeRegisteredStaff[clean];
+
+  return Object.values(runtimeRegisteredStaff).find((s) => {
+    return (
+      s.staff_id.toUpperCase() === cleanUpper ||
+      s.license_number.toUpperCase() === cleanUpper ||
+      s.id.toLowerCase() === clean.toLowerCase() ||
+      s.email.toLowerCase() === clean.toLowerCase() ||
+      s.full_name.toLowerCase().includes(clean.toLowerCase()) ||
+      s.phone_number.includes(clean)
+    );
+  });
+}
+
+export function getAllRegisteredStaff(): StoredStaffRegistration[] {
+  const unique = new Map<string, StoredStaffRegistration>();
+  Object.values(runtimeRegisteredStaff).forEach((s) => {
+    unique.set(s.staff_id, s);
+  });
+  return Array.from(unique.values());
+}
+
