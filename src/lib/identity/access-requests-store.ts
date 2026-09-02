@@ -82,6 +82,8 @@ export interface ClinicalEncounter {
   id: string;
   patient_id: string;
   date: string;
+  time?: string;
+  timestamp?: string;
   hospital_name: string;
   department: string;
   doctor_name: string;
@@ -93,6 +95,7 @@ export interface ClinicalEncounter {
     name: string;
     dosage: string;
     frequency: string;
+    duration?: string;
     instructions?: string;
     is_active?: boolean;
     is_new?: boolean;
@@ -107,7 +110,7 @@ export interface ClinicalEncounter {
     glucose_mg_dl?: number;
     spo2?: number;
   };
-  investigations?: Array<{ name: string; status: string; result?: string }>;
+  investigations?: Array<{ name: string; status: string; result?: string; time?: string }>;
   reports?: Array<{ title: string; file_name: string; file_url?: string }>;
   clinical_notes: string;
 }
@@ -260,100 +263,506 @@ if (!globalStore.__medibase_medical_reports) {
   ];
 }
 
+export function normalizePatientId(idOrStr: string): string {
+  if (!idOrStr) return "MB-100001";
+  const str = idOrStr.trim().toUpperCase();
+  if (str.startsWith("MB-")) return str;
+  const digits = str.replace(/\D/g, "");
+  if (digits.length >= 6) {
+    return `MB-${digits.slice(-6)}`;
+  }
+  const idx = extractPatientIndex(str);
+  if (idx !== null) {
+    if (idx === 2394 || idx === 102394) return "MB-102394";
+    const num = 100000 + (idx > 0 && idx < 1000 ? idx : 1);
+    return `MB-${num}`;
+  }
+  return str;
+}
+
+const BASELINE_ENCOUNTERS: Record<string, ClinicalEncounter[]> = {
+  "MB-100001": [
+    {
+      id: "enc-101-1",
+      patient_id: "MB-100001",
+      date: "28 Aug 2026",
+      time: "11:15 AM",
+      timestamp: "2026-08-28T11:15:00Z",
+      hospital_name: "City General Hospital",
+      department: "Pulmonology / Outpatient Clinic",
+      doctor_name: "Dr. Rahul Sharma",
+      doctor_role: "Senior Physician",
+      visit_type: "Outpatient Follow-up",
+      chief_complaint: "Cough with sputum production for 3 weeks.",
+      diagnoses: [
+        { code: "J20.9", name: "Acute Bronchitis", is_primary: true, is_new: true },
+      ],
+      prescriptions: [
+        {
+          name: "Azithromycin 500mg",
+          dosage: "500mg",
+          frequency: "Daily for 5 days",
+          duration: "5 days",
+          instructions: "Take after meals with warm water",
+          is_active: true,
+          is_new: true,
+        },
+      ],
+      vitals: {
+        bp: "124/80 mmHg",
+        systolic: 124,
+        diastolic: 80,
+        heart_rate: 76,
+        glucose_mg_dl: 104,
+        spo2: 98,
+      },
+      investigations: [
+        { name: "Blood Complete Hemogram (CBC)", status: "Completed", result: "Normal WBC, No infection", time: "11:30 AM" },
+        { name: "Digital Chest X-Ray", status: "Completed", result: "Clear lung fields bilaterally", time: "11:45 AM" },
+      ],
+      reports: [
+        { title: "Chest_XRay_Aug28.pdf", file_name: "Chest_XRay_Aug28.pdf", file_url: "/documents/MB-100001/Chest_XRay_Aug28.pdf" },
+      ],
+      clinical_notes: "Productive cough responding well to macrolide antibiotic. Penicillin allergy confirmed and documented.",
+    },
+    {
+      id: "enc-101-2",
+      patient_id: "MB-100001",
+      date: "14 May 2026",
+      time: "09:40 AM",
+      timestamp: "2026-05-14T09:40:00Z",
+      hospital_name: "City General Hospital",
+      department: "General Medicine",
+      doctor_name: "Dr. Ananya Iyer",
+      doctor_role: "Consultant Physician",
+      visit_type: "Annual Health Assessment",
+      chief_complaint: "Routine executive annual health screening and mild throat irritation.",
+      diagnoses: [
+        { code: "J30.1", name: "Allergic Rhinitis / Seasonal Bronchitis", is_primary: true },
+      ],
+      prescriptions: [
+        {
+          name: "Levocetirizine 5mg",
+          dosage: "5mg",
+          frequency: "Once Daily (Night)",
+          duration: "10 days",
+          instructions: "Take at bedtime",
+          is_active: false,
+        },
+      ],
+      vitals: {
+        bp: "118/76 mmHg",
+        systolic: 118,
+        diastolic: 76,
+        heart_rate: 70,
+        glucose_mg_dl: 98,
+        spo2: 99,
+      },
+      investigations: [
+        { name: "Serum IgE Allergy Profile", status: "Completed", result: "Mild elevation to dust mites" },
+      ],
+      reports: [
+        { title: "Annual_Screening_May26.pdf", file_name: "Annual_Screening_May26.pdf", file_url: "/documents/MB-100001/Annual_Screening_May26.pdf" },
+      ],
+      clinical_notes: "Overall health parameters within normal range. Mild seasonal allergic rhinitis managed with antihistamines.",
+    },
+    {
+      id: "enc-101-3",
+      patient_id: "MB-100001",
+      date: "10 Nov 2025",
+      time: "02:20 PM",
+      timestamp: "2025-11-10T14:20:00Z",
+      hospital_name: "Apex Emergency Medical Center",
+      department: "Emergency & Trauma Care",
+      doctor_name: "Dr. Sarah Jenkins",
+      doctor_role: "Emergency Medicine Specialist",
+      visit_type: "Emergency Consultation",
+      chief_complaint: "Acute wheezing episode after sudden environmental smoke and dust exposure.",
+      diagnoses: [
+        { code: "J45.901", name: "Acute Bronchospasm (Allergen induced)", is_primary: true },
+      ],
+      prescriptions: [
+        {
+          name: "Salbutamol Inhaler (100mcg)",
+          dosage: "2 puffs",
+          frequency: "As needed (SOS)",
+          duration: "30 days",
+          instructions: "Use with spacer during sudden breathlessness",
+          is_active: true,
+        },
+      ],
+      vitals: {
+        bp: "130/84 mmHg",
+        systolic: 130,
+        diastolic: 84,
+        heart_rate: 88,
+        glucose_mg_dl: 112,
+        spo2: 96,
+      },
+      investigations: [
+        { name: "Peak Expiratory Flow Rate (PEFR)", status: "Completed", result: "380 L/min (Improves to 450 post-bronchodilator)" },
+      ],
+      reports: [
+        { title: "Emergency_Summary_Nov25.pdf", file_name: "Emergency_Summary_Nov25.pdf", file_url: "/documents/MB-100001/Emergency_Summary_Nov25.pdf" },
+      ],
+      clinical_notes: "Immediate relief achieved with nebulized bronchodilator. Discharged with SOS inhaler.",
+    },
+  ],
+
+  "MB-100002": [
+    {
+      id: "enc-102-1",
+      patient_id: "MB-100002",
+      date: "15 Aug 2026",
+      time: "10:30 AM",
+      timestamp: "2026-08-15T10:30:00Z",
+      hospital_name: "City General Hospital",
+      department: "Orthopedics & Joint Care",
+      doctor_name: "Dr. Rahul Sharma",
+      doctor_role: "Senior Orthopedic Surgeon",
+      visit_type: "Orthopedic Specialist Evaluation",
+      chief_complaint: "Bilateral knee joint stiffness and aching pain during morning farm activities.",
+      diagnoses: [
+        { code: "M17.0", name: "Bilateral Primary Osteoarthritis of Knees", is_primary: true },
+      ],
+      prescriptions: [
+        {
+          name: "Glucosamine + Chondroitin 1500mg",
+          dosage: "1 tablet",
+          frequency: "Once Daily (Morning)",
+          duration: "60 days",
+          instructions: "Take after breakfast with milk",
+          is_active: true,
+        },
+        {
+          name: "Paracetamol 650mg",
+          dosage: "650mg",
+          frequency: "As needed (SOS for severe pain)",
+          duration: "15 days",
+          instructions: "Maximum 3 tablets daily",
+          is_active: true,
+        },
+      ],
+      vitals: {
+        bp: "132/84 mmHg",
+        systolic: 132,
+        diastolic: 84,
+        heart_rate: 68,
+        glucose_mg_dl: 110,
+        spo2: 98,
+      },
+      investigations: [
+        { name: "Digital Weight-Bearing Knee X-Ray (AP/Lateral)", status: "Completed", result: "Moderate joint space narrowing (Kellgren-Lawrence Grade 2)", time: "11:00 AM" },
+      ],
+      reports: [
+        { title: "Knee_XRay_Aug26.pdf", file_name: "Knee_XRay_Aug26.pdf", file_url: "/documents/MB-100002/Knee_XRay_Aug26.pdf" },
+      ],
+      clinical_notes: "Conservative management advised with quadriceps strengthening exercises and low-impact walking. Avoid deep squats.",
+    },
+    {
+      id: "enc-102-2",
+      patient_id: "MB-100002",
+      date: "04 Mar 2026",
+      time: "11:00 AM",
+      timestamp: "2026-03-04T11:00:00Z",
+      hospital_name: "City General Hospital",
+      department: "Physiotherapy & Rehabilitation",
+      doctor_name: "Dr. Ananya Iyer",
+      doctor_role: "Physiotherapy Lead",
+      visit_type: "Physical Therapy Assessment",
+      chief_complaint: "Follow-up for joint mobility and range of motion training.",
+      diagnoses: [
+        { code: "M17.9", name: "Osteoarthritis Rehabilitation", is_primary: true },
+      ],
+      prescriptions: [],
+      vitals: {
+        bp: "128/80 mmHg",
+        systolic: 128,
+        diastolic: 80,
+        heart_rate: 72,
+        glucose_mg_dl: 105,
+        spo2: 99,
+      },
+      investigations: [],
+      reports: [],
+      clinical_notes: "Knee flexion improved from 105° to 120°. Patient instructed on home physiotherapy protocol.",
+    },
+  ],
+
+  "MB-100003": [
+    {
+      id: "enc-103-1",
+      patient_id: "MB-100003",
+      date: "24 Aug 2026",
+      time: "10:15 AM",
+      timestamp: "2026-08-24T10:15:00Z",
+      hospital_name: "City General Hospital",
+      department: "Cardiology / Outpatient Clinic",
+      doctor_name: "Dr. Rahul Sharma",
+      doctor_role: "Senior Interventional Cardiologist",
+      visit_type: "Outpatient Follow-up",
+      chief_complaint: "Routine 3-month blood pressure review and fasting glucose checkup.",
+      diagnoses: [
+        { code: "I10", name: "Essential Hypertension", is_primary: true, is_new: false },
+        { code: "E11.9", name: "Type 2 Diabetes Mellitus", is_primary: false, is_new: true },
+      ],
+      prescriptions: [
+        {
+          name: "Metformin 500mg",
+          dosage: "500mg",
+          frequency: "Twice daily with meals (1-0-1)",
+          duration: "90 days",
+          instructions: "Take immediately after food",
+          is_active: true,
+          is_new: true,
+        },
+        {
+          name: "Telmisartan 40mg",
+          dosage: "40mg",
+          frequency: "Once Daily (Morning 1-0-0)",
+          duration: "90 days",
+          instructions: "Take before breakfast",
+          is_active: true,
+          is_new: true,
+        },
+      ],
+      vitals: {
+        bp: "128/82 mmHg",
+        systolic: 128,
+        diastolic: 82,
+        heart_rate: 72,
+        glucose_mg_dl: 142,
+        spo2: 98,
+      },
+      investigations: [
+        { name: "Glycated Hemoglobin (HbA1c)", status: "Completed", result: "6.8% (Improved control)", time: "10:45 AM" },
+        { name: "Lipid Profile Panel", status: "Completed", result: "Total Cholesterol 186 mg/dL, LDL 108 mg/dL", time: "10:45 AM" },
+        { name: "Standard 12-Lead ECG", status: "Completed", result: "Normal Sinus Rhythm, HR 72 bpm", time: "11:00 AM" },
+      ],
+      reports: [
+        { title: "Lipid_Profile_Aug26.pdf", file_name: "Lipid_Profile_Aug26.pdf", file_url: "/documents/MB-100003/Lipid_Profile_Aug26.pdf" },
+        { title: "ECG_Resting_Aug26.pdf", file_name: "ECG_Resting_Aug26.pdf", file_url: "/documents/MB-100003/ECG_Resting_Aug26.pdf" },
+      ],
+      clinical_notes: "Blood pressure well controlled on ARB therapy (128/82 mmHg). HbA1c at 6.8%. Continue current regimen and maintain 45-minute daily brisk walk.",
+    },
+    {
+      id: "enc-103-2",
+      patient_id: "MB-100003",
+      date: "12 Apr 2026",
+      time: "03:45 PM",
+      timestamp: "2026-04-12T15:45:00Z",
+      hospital_name: "City General Hospital",
+      department: "Endocrinology & Diabetes Center",
+      doctor_name: "Dr. Sarah Jenkins",
+      doctor_role: "Consultant Endocrinologist",
+      visit_type: "Endocrinology Consultation",
+      chief_complaint: "Quarterly glycemic evaluation and dietary regimen compliance.",
+      diagnoses: [
+        { code: "E11.9", name: "Type 2 Diabetes Mellitus", is_primary: true },
+      ],
+      prescriptions: [
+        {
+          name: "Metformin 500mg",
+          dosage: "500mg",
+          frequency: "Twice daily with meals (1-0-1)",
+          duration: "90 days",
+          instructions: "Take with food",
+          is_active: true,
+        },
+      ],
+      vitals: {
+        bp: "134/86 mmHg",
+        systolic: 134,
+        diastolic: 86,
+        heart_rate: 78,
+        glucose_mg_dl: 158,
+        spo2: 98,
+      },
+      investigations: [
+        { name: "Fasting Blood Sugar (FBS)", status: "Completed", result: "126 mg/dL" },
+        { name: "Postprandial Blood Sugar (PPBS)", status: "Completed", result: "168 mg/dL" },
+      ],
+      reports: [
+        { title: "Diabetes_Panel_Apr26.pdf", file_name: "Diabetes_Panel_Apr26.pdf", file_url: "/documents/MB-100003/Diabetes_Panel_Apr26.pdf" },
+      ],
+      clinical_notes: "Glycemic control stable. Reinforced dietary carbohydrate moderation.",
+    },
+    {
+      id: "enc-103-3",
+      patient_id: "MB-100003",
+      date: "18 Dec 2025",
+      time: "09:00 AM",
+      timestamp: "2025-12-18T09:00:00Z",
+      hospital_name: "City General Hospital",
+      department: "General Medicine",
+      doctor_name: "Dr. Rahul Sharma",
+      doctor_role: "Senior Physician",
+      visit_type: "Initial Specialist Consultation",
+      chief_complaint: "Fatigue, mild polyuria, and borderline elevated blood pressure readings at home.",
+      diagnoses: [
+        { code: "I10", name: "Essential Hypertension", is_primary: true },
+        { code: "R73.03", name: "Prediabetes / Impaired Fasting Glucose", is_primary: false },
+      ],
+      prescriptions: [
+        {
+          name: "Lisinopril 10mg",
+          dosage: "10mg",
+          frequency: "Daily in morning",
+          duration: "90 days",
+          instructions: "Take after breakfast",
+          is_active: false,
+          discontinued: true,
+          discontinuation_reason: "Transitioned to Telmisartan 40mg due to mild dry cough",
+        },
+      ],
+      vitals: {
+        bp: "142/90 mmHg",
+        systolic: 142,
+        diastolic: 90,
+        heart_rate: 80,
+        glucose_mg_dl: 164,
+        spo2: 97,
+      },
+      investigations: [
+        { name: "Initial HbA1c Screening", status: "Completed", result: "7.2%" },
+        { name: "Kidney Function Test (KFT)", status: "Completed", result: "eGFR >90 mL/min, Normal Creatinine" },
+      ],
+      reports: [
+        { title: "Initial_Labs_Dec25.pdf", file_name: "Initial_Labs_Dec25.pdf", file_url: "/documents/MB-100003/Initial_Labs_Dec25.pdf" },
+      ],
+      clinical_notes: "Initial diagnosis of Essential Hypertension. Commenced ACE inhibitor therapy and diabetic lifestyle education.",
+    },
+  ],
+
+  "MB-102394": [
+    {
+      id: "enc-102394-1",
+      patient_id: "MB-102394",
+      date: "20 Aug 2026",
+      time: "11:30 AM",
+      timestamp: "2026-08-20T11:30:00Z",
+      hospital_name: "City General Hospital",
+      department: "Cardiology / Outpatient Clinic",
+      doctor_name: "Dr. Rahul Sharma",
+      doctor_role: "Senior Physician",
+      visit_type: "Outpatient Follow-up",
+      chief_complaint: "Routine check-up and blood pressure management review.",
+      diagnoses: [
+        { code: "I10", name: "Mild Essential Hypertension", is_primary: true },
+      ],
+      prescriptions: [
+        {
+          name: "Telmisartan 40mg",
+          dosage: "40mg",
+          frequency: "Once Daily (Morning 1-0-0)",
+          duration: "30 days",
+          instructions: "Take before breakfast",
+          is_active: true,
+        },
+      ],
+      vitals: {
+        bp: "130/84 mmHg",
+        systolic: 130,
+        diastolic: 84,
+        heart_rate: 74,
+        glucose_mg_dl: 108,
+        spo2: 99,
+      },
+      investigations: [
+        { name: "Standard 12-Lead ECG", status: "Completed", result: "Normal Sinus Rhythm", time: "11:45 AM" },
+      ],
+      reports: [
+        { title: "ECG_Trace_Aug26.pdf", file_name: "ECG_Trace_Aug26.pdf", file_url: "/documents/MB-102394/ECG_Trace_Aug26.pdf" },
+      ],
+      clinical_notes: "Blood pressure stabilized. Penicillin and dust allergy noted on medical passport.",
+    },
+    {
+      id: "enc-102394-2",
+      patient_id: "MB-102394",
+      date: "10 Jan 2026",
+      time: "10:00 AM",
+      timestamp: "2026-01-10T10:00:00Z",
+      hospital_name: "City General Hospital",
+      department: "Preventive Healthcare & Wellness",
+      doctor_name: "Dr. Ananya Iyer",
+      doctor_role: "Consultant Physician",
+      visit_type: "Preventive Health Assessment",
+      chief_complaint: "Executive comprehensive health checkup.",
+      diagnoses: [
+        { code: "Z00.00", name: "General Adult Medical Examination", is_primary: true },
+      ],
+      prescriptions: [],
+      vitals: {
+        bp: "126/82 mmHg",
+        systolic: 126,
+        diastolic: 82,
+        heart_rate: 72,
+        glucose_mg_dl: 96,
+        spo2: 99,
+      },
+      investigations: [
+        { name: "Comprehensive Lipid & Renal Panel", status: "Completed", result: "All indices within normal physiological limits" },
+      ],
+      reports: [
+        { title: "Wellness_Report_Jan26.pdf", file_name: "Wellness_Report_Jan26.pdf", file_url: "/documents/MB-102394/Wellness_Report_Jan26.pdf" },
+      ],
+      clinical_notes: "Healthy cardiovascular baseline. Advised continuation of balanced nutrition and regular physical exercise.",
+    },
+  ],
+};
+
+function generateFallbackEncounters(patientId: string): ClinicalEncounter[] {
+  const norm = normalizePatientId(patientId);
+  return [
+    {
+      id: `enc-${norm.toLowerCase()}-1`,
+      patient_id: norm,
+      date: "10 Aug 2026",
+      time: "10:00 AM",
+      timestamp: "2026-08-10T10:00:00Z",
+      hospital_name: "City General Hospital",
+      department: "General Medicine & Outpatient Clinic",
+      doctor_name: "Dr. Rahul Sharma",
+      doctor_role: "Senior Physician",
+      visit_type: "Comprehensive Clinical Assessment",
+      chief_complaint: "Routine clinical assessment and baseline medical history registration.",
+      diagnoses: [
+        { code: "Z00.00", name: "General Health Evaluation", is_primary: true },
+      ],
+      prescriptions: [
+        {
+          name: "Multivitamin & Mineral Supplement",
+          dosage: "1 tablet",
+          frequency: "Once Daily after breakfast",
+          duration: "30 days",
+          instructions: "Take with water",
+          is_active: true,
+        },
+      ],
+      vitals: {
+        bp: "122/80 mmHg",
+        systolic: 122,
+        diastolic: 80,
+        heart_rate: 72,
+        glucose_mg_dl: 102,
+        spo2: 98,
+      },
+      investigations: [
+        { name: "Baseline Complete Blood Count (CBC)", status: "Completed", result: "Normal Parameters", time: "10:30 AM" },
+      ],
+      reports: [],
+      clinical_notes: `Initial baseline clinical encounter recorded for MediBase patient ${norm}. Longitudinal history initialized.`,
+    },
+  ];
+}
+
 if (!globalStore.__medibase_clinical_encounters) {
   globalStore.__medibase_clinical_encounters = {
-    "1": [
-      {
-        id: "enc-101-1",
-        patient_id: "MB-100001",
-        date: "28 Aug 2026",
-        hospital_name: "City General Hospital",
-        department: "Pulmonology / Outpatient Clinic",
-        doctor_name: "Dr. Rahul Sharma",
-        doctor_role: "Senior Physician",
-        visit_type: "Outpatient Follow-up",
-        chief_complaint: "Cough with sputum production for 3 weeks.",
-        diagnoses: [
-          { code: "J20.9", name: "Acute Bronchitis", is_primary: true },
-        ],
-        prescriptions: [
-          {
-            name: "Azithromycin 500mg",
-            dosage: "500mg",
-            frequency: "Daily for 5 days",
-            instructions: "Take after meals",
-            is_active: true,
-          },
-        ],
-        vitals: {
-          bp: "124/80 mmHg",
-          heart_rate: 76,
-          glucose_mg_dl: 104,
-          spo2: 98,
-        },
-        investigations: [
-          { name: "Blood Test", status: "Completed", result: "Normal CBC" },
-          { name: "Chest X-Ray", status: "Completed", result: "Clear lung fields" },
-        ],
-        reports: [
-          { title: "Chest_XRay_Aug28.pdf", file_name: "Chest_XRay_Aug28.pdf" },
-        ],
-        clinical_notes: "Productive cough responding well to macrolide antibiotic. Penicillin allergy noted.",
-      },
-    ],
-    "3": [
-      {
-        id: "enc-103-1",
-        patient_id: "MB-100003",
-        date: "24 Oct 2023",
-        hospital_name: "City General Hospital",
-        department: "Cardiology / Outpatient Clinic",
-        doctor_name: "Dr. Rahul Sharma",
-        doctor_role: "Senior Interventional Cardiologist",
-        visit_type: "Outpatient Follow-up",
-        chief_complaint: "Routine check-up, blood pressure review, and mild exertional fatigue.",
-        diagnoses: [
-          { code: "E11.9", name: "Type 2 Diabetes", is_primary: false, is_new: true },
-          { code: "I10", name: "Essential Hypertension", is_primary: true, is_new: false },
-        ],
-        prescriptions: [
-          {
-            name: "Metformin 500mg",
-            dosage: "500mg",
-            frequency: "Twice daily with meals",
-            instructions: "Take with food",
-            is_active: true,
-            is_new: true,
-          },
-          {
-            name: "Lisinopril 10mg",
-            dosage: "10mg",
-            frequency: "Daily",
-            instructions: "Discontinued due to improved blood pressure baseline",
-            is_active: false,
-            discontinued: true,
-            discontinuation_reason: "Discontinued due to improved blood pressure",
-          },
-        ],
-        vitals: {
-          bp: "128/82 mmHg",
-          systolic: 128,
-          diastolic: 82,
-          heart_rate: 72,
-          glucose_mg_dl: 145,
-          spo2: 98,
-        },
-        investigations: [
-          { name: "Lipid Profile", status: "Results pending", result: "In processing" },
-          { name: "HbA1c", status: "Completed", result: "7.2%" },
-        ],
-        reports: [
-          { title: "Lipid_Profile_Oct24.pdf", file_name: "Lipid_Profile_Oct24.pdf" },
-          { title: "ECG_Resting_Oct24.pdf", file_name: "ECG_Resting_Oct24.pdf" },
-        ],
-        clinical_notes: "Blood glucose moderately elevated (145 mg/dL). Commenced Metformin 500mg BD. Discontinued Lisinopril 10mg as BP is well managed.",
-      },
-    ],
+    ...BASELINE_ENCOUNTERS,
+    "1": BASELINE_ENCOUNTERS["MB-100001"],
+    "2": BASELINE_ENCOUNTERS["MB-100002"],
+    "3": BASELINE_ENCOUNTERS["MB-100003"],
+    "102394": BASELINE_ENCOUNTERS["MB-102394"],
   };
 }
 
@@ -942,32 +1351,61 @@ export function getAuditLogById(auditId: string): StoredAuditLog | undefined {
 }
 
 export function getPatientEncounters(patientIdentifier: string): ClinicalEncounter[] {
-  const targetIdx = extractPatientIndex(patientIdentifier) ?? 3;
-  const list = runtimeEncounters[String(targetIdx)] || runtimeEncounters["3"] || [];
-  return list;
+  const normKey = normalizePatientId(patientIdentifier);
+  const targetIdx = extractPatientIndex(patientIdentifier);
+
+  if (!runtimeEncounters[normKey]) {
+    if (BASELINE_ENCOUNTERS[normKey]) {
+      runtimeEncounters[normKey] = [...BASELINE_ENCOUNTERS[normKey]];
+    } else {
+      runtimeEncounters[normKey] = generateFallbackEncounters(normKey);
+    }
+  }
+
+  // Also maintain index-based key alias
+  if (targetIdx !== null) {
+    runtimeEncounters[String(targetIdx)] = runtimeEncounters[normKey];
+  }
+
+  return runtimeEncounters[normKey];
 }
 
 export function recordClinicalEncounter(
   patientIdentifier: string,
-  encounterData: Omit<ClinicalEncounter, "id" | "date"> & { date?: string }
+  encounterData: Omit<ClinicalEncounter, "id" | "date"> & { date?: string; time?: string }
 ): ClinicalEncounter {
-  const targetIdx = extractPatientIndex(patientIdentifier) ?? 3;
-  const key = String(targetIdx);
-  if (!runtimeEncounters[key]) {
-    runtimeEncounters[key] = [];
-  }
+  const normKey = normalizePatientId(patientIdentifier);
+  const targetIdx = extractPatientIndex(patientIdentifier);
+
+  // Ensure patient history exists before appending
+  getPatientEncounters(normKey);
+
+  const now = new Date();
+  const formattedDate = encounterData.date || now.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  const formattedTime = encounterData.time || now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   const newEnc: ClinicalEncounter = {
     ...encounterData,
     id: `enc-rec-${Date.now()}`,
-    date: encounterData.date || new Date().toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }),
+    patient_id: normKey,
+    date: formattedDate,
+    time: formattedTime,
+    timestamp: encounterData.timestamp || now.toISOString(),
   };
 
-  runtimeEncounters[key].unshift(newEnc);
+  runtimeEncounters[normKey].unshift(newEnc);
+
+  if (targetIdx !== null) {
+    runtimeEncounters[String(targetIdx)] = runtimeEncounters[normKey];
+  }
 
   recordAuditLog({
     actor_name: encounterData.doctor_name,
@@ -976,9 +1414,22 @@ export function recordClinicalEncounter(
     action: "visit_created",
     action_label: `Recorded New Clinical Visit (${newEnc.visit_type})`,
     purpose: "Clinical Encounter Documentation",
-    patient_id: patientIdentifier,
+    patient_id: normKey,
     is_emergency: false,
     access_type: "normal",
+  });
+
+  // Notify patient of new encounter addition
+  createNotification({
+    recipient_type: "patient",
+    recipient_id: normKey,
+    title: "New Clinical Encounter Recorded",
+    message: `${encounterData.doctor_name} at ${encounterData.hospital_name} added a new clinical encounter (${newEnc.visit_type}) to your medical history on ${formattedDate} at ${formattedTime}.`,
+    type: "record_updated",
+    category: "updates",
+    reference_id: newEnc.id,
+    action_url: "/patient/timeline",
+    is_read: false,
   });
 
   return newEnc;
@@ -987,8 +1438,8 @@ export function recordClinicalEncounter(
 export function addMedicalReport(report: StoredMedicalReport): StoredMedicalReport {
   runtimeMedicalReports.unshift(report);
 
-  const targetIdx = extractPatientIndex(report.patient_id) ?? 3;
-  const encounters = runtimeEncounters[String(targetIdx)];
+  const normKey = normalizePatientId(report.patient_id);
+  const encounters = getPatientEncounters(normKey);
   if (encounters && encounters.length > 0) {
     if (!encounters[0].reports) encounters[0].reports = [];
     encounters[0].reports.unshift({

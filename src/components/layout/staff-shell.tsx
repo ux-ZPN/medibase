@@ -33,7 +33,7 @@ export function StaffShell({
   children,
   activeNav,
   patientHeader,
-  portalTitle = "MediCore Staff Portal",
+  portalTitle = "Medi Base Staff Portal",
 }: StaffShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -115,11 +115,10 @@ export function StaffShell({
                 <Link
                   key={item.key}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    active
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors ${active
                       ? "bg-[#006699] text-white shadow-sm"
                       : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
+                    }`}
                 >
                   <Icon className={`w-4 h-4 ${active ? "text-white" : "text-slate-500"}`} />
                   <span>{item.label}</span>

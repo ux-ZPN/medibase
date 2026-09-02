@@ -46,15 +46,20 @@ interface ClinicalData {
   encounters?: Array<{
     id: string;
     date: string;
-    hospital: string;
-    department: string;
-    doctorName: string;
-    doctorRole: string;
-    visitType: string;
-    chiefComplaint: string;
-    diagnosis: string;
-    clinicalNotes: string;
-    prescriptions: string[];
+    time?: string;
+    hospital_name?: string;
+    hospital?: string;
+    department?: string;
+    doctor_name?: string;
+    doctorName?: string;
+    doctorRole?: string;
+    visit_type?: string;
+    visitType?: string;
+    chief_complaint?: string;
+    chiefComplaint?: string;
+    diagnosis?: string;
+    clinicalNotes?: string;
+    prescriptions?: unknown[];
   }>;
   error?: string;
   message?: string;
@@ -372,15 +377,22 @@ export default function PatientOverviewPage({
                     <tbody className="divide-y divide-slate-100 text-slate-700">
                       {clinicalData?.encounters?.map((enc) => (
                         <tr key={enc.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-3.5 px-5 font-medium text-slate-900">{enc.date}</td>
-                          <td className="py-3.5 px-5">{enc.chiefComplaint}</td>
-                          <td className="py-3.5 px-5 text-slate-600">{enc.doctorName}</td>
+                          <td className="py-3.5 px-5 font-medium text-slate-900 whitespace-nowrap">
+                            <span>📅 {enc.date}</span>
+                            {enc.time && <span className="text-[11px] text-slate-500 font-normal ml-2">⏰ {enc.time}</span>}
+                          </td>
+                          <td className="py-3.5 px-5 font-semibold text-slate-800">
+                            {enc.visit_type || enc.visitType || enc.chief_complaint || enc.chiefComplaint || "Clinical Visit"}
+                          </td>
+                          <td className="py-3.5 px-5 text-slate-600 font-medium">
+                            {enc.doctor_name || enc.doctorName || "Dr. Rahul Sharma"}
+                          </td>
                           <td className="py-3.5 px-5 text-right">
                             <Link
                               href={`/staff/patient/${patientId}/timeline`}
                               className="text-[#006699] font-semibold hover:underline"
                             >
-                              Details
+                              Details ➔
                             </Link>
                           </td>
                         </tr>

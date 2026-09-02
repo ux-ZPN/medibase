@@ -218,37 +218,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Query Database for Patient Record
+    // 3. Resolve Patient Record (Instant In-Memory Lookup first, then Database fallback)
     let patientRecord = null;
     let profileName: string | null = null;
 
-    try {
-      let query = supabase
-        .from("patients")
-        .select("id, profile_id, medibase_id, qr_code_token, date_of_birth, gender, blood_group, occupation, profiles(full_name)")
-        .limit(1);
-
-      if (targetQrToken) {
-        query = query.or(`medibase_id.eq.${targetMediBaseId},qr_code_token.eq.${targetQrToken}`);
-      } else {
-        query = query.eq("medibase_id", targetMediBaseId);
-      }
-
-      const { data: matchedPatient } = await query.maybeSingle();
-
-      if (matchedPatient) {
-        patientRecord = matchedPatient;
-        const profileObj = Array.isArray(matchedPatient.profiles)
-          ? matchedPatient.profiles[0]
-          : matchedPatient.profiles;
-        profileName = (profileObj as { full_name?: string })?.full_name || null;
-      }
-    } catch {
-      // Database query error handled by fallback registry
-    }
-
-    // Fallback to seeded demo patients registry
-    if (!patientRecord && targetMediBaseId && DEMO_PATIENTS_LOOKUP[targetMediBaseId]) {
+    if (targetMediBaseId && DEMO_PATIENTS_LOOKUP[targetMediBaseId]) {
       const demoPatient = DEMO_PATIENTS_LOOKUP[targetMediBaseId];
       patientRecord = {
         id: demoPatient.id,
@@ -261,6 +235,31 @@ export async function POST(request: Request) {
         occupation: demoPatient.occupation,
       };
       profileName = demoPatient.full_name;
+    } else {
+      try {
+        let query = supabase
+          .from("patients")
+          .select("id, profile_id, medibase_id, qr_code_token, date_of_birth, gender, blood_group, occupation, profiles(full_name)")
+          .limit(1);
+
+        if (targetQrToken) {
+          query = query.or(`medibase_id.eq.${targetMediBaseId},qr_code_token.eq.${targetQrToken}`);
+        } else {
+          query = query.eq("medibase_id", targetMediBaseId);
+        }
+
+        const { data: matchedPatient } = await query.maybeSingle();
+
+        if (matchedPatient) {
+          patientRecord = matchedPatient;
+          const profileObj = Array.isArray(matchedPatient.profiles)
+            ? matchedPatient.profiles[0]
+            : matchedPatient.profiles;
+          profileName = (profileObj as { full_name?: string })?.full_name || null;
+        }
+      } catch {
+        // Handled below
+      }
     }
 
     if (!patientRecord) {
@@ -275,13 +274,13 @@ export async function POST(request: Request) {
 
     const calculatedAge = calculateAge(patientRecord.date_of_birth);
 
-    // 4. Record Audit Log Entry (Patient identification is auditable)
+    // 4. Record Audit Log Entry (Patient identification is auditable, non-blocking)
     try {
       const staffUserId = user?.id || "demo-staff-0001";
       const staffRole = user?.user_metadata?.staff_role || "doctor";
       const hospitalId = user?.user_metadata?.hospital_id || "a0000000-0000-0000-0000-000000000001";
 
-      await supabase.from("audit_logs").insert({
+      supabase.from("audit_logs").insert({
         actor_profile_id: staffUserId,
         actor_role: staffRole,
         patient_id: patientRecord.id,

@@ -11,6 +11,8 @@ interface NewVisitRequestBody {
   clinicalNotes?: string;
   visitType?: string;
   department?: string;
+  encounterDate?: string;
+  encounterTime?: string;
   vitals?: {
     systolic?: number;
     diastolic?: number;
@@ -28,6 +30,12 @@ interface NewVisitRequestBody {
     name: string;
     status: string;
     result?: string;
+  }>;
+  reports?: Array<{
+    title?: string;
+    file_name?: string;
+    file_url?: string;
+    category?: string;
   }>;
 }
 
@@ -283,6 +291,8 @@ export async function POST(
     // 8. Synchronize with Runtime Store for Instant SSR / Client Cache Invalidation
     const savedEncounter = recordClinicalEncounter(medibaseId, {
       patient_id: medibaseId,
+      date: body.encounterDate,
+      time: body.encounterTime,
       hospital_name: hospitalName,
       department: department,
       doctor_name: doctorFullName.startsWith("Dr.") ? doctorFullName : `Dr. ${doctorFullName}`,
@@ -314,8 +324,41 @@ export async function POST(
             spo2: 98,
           },
       investigations: Array.isArray(body.investigations) ? body.investigations : [],
+      reports: Array.isArray(body.reports)
+        ? body.reports.map((r: { title?: string; file_name?: string; file_url?: string }) => ({
+            title: r.title || r.file_name || "Prescription Document",
+            file_name: r.file_name || "Prescription_Document.pdf",
+            file_url: r.file_url || `/documents/${medibaseId}/${r.file_name || "doc.pdf"}`,
+          }))
+        : [],
       clinical_notes: clinicalNotes || "Clinical visit documented by attending physician.",
     });
+
+    // 8.1 If reports/files were attached, register them in medical reports repository
+    if (Array.isArray(body.reports) && body.reports.length > 0) {
+      try {
+        const { addMedicalReport } = await import("@/lib/identity/access-requests-store");
+        for (const rep of body.reports) {
+          addMedicalReport({
+            id: `rep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            patient_id: medibaseId,
+            encounter_id: savedEncounter.id,
+            uploaded_by_staff_id: staffRecordId,
+            hospital_name: hospitalName,
+            doctor_name: doctorFullName.startsWith("Dr.") ? doctorFullName : `Dr. ${doctorFullName}`,
+            report_title: rep.title || "Clinical Prescription / Document",
+            report_type: "Prescription",
+            file_name: rep.file_name || "Prescription_Scan.pdf",
+            file_size_bytes: 350000,
+            mime_type: (rep.file_name || "").endsWith(".pdf") ? "application/pdf" : "image/jpeg",
+            storage_path: rep.file_url || `/documents/${medibaseId}/${rep.file_name || "doc.pdf"}`,
+            created_at: new Date().toISOString(),
+          });
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
 
     // 9. Audit Event Logging (visit_created)
     try {

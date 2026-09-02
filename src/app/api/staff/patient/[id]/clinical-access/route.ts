@@ -67,6 +67,7 @@ export async function GET(
     let patientName = "Rahul Sharma";
     let medibaseId = targetPatientIdentifier.toUpperCase();
     let patientAge = 32;
+    let allergies = ["Penicillin (Anaphylaxis)", "Dust Mites"];
 
     try {
       const { data: dbPatient } = await supabase
@@ -159,6 +160,23 @@ export async function GET(
       // Non-blocking audit log
     }
 
+    const { getPatientEncounters } = await import("@/lib/identity/access-requests-store");
+    const encountersList = getPatientEncounters(medibaseId);
+
+    const activeMeds = encountersList
+      .flatMap((e) => e.prescriptions || [])
+      .filter((p) => p.is_active !== false)
+      .map((p) => `${p.name} ${p.dosage || ""}`.trim());
+
+    const activeConditions = Array.from(
+      new Set(encountersList.flatMap((e) => e.diagnoses || []).map((d) => d.name))
+    );
+
+    const recentInvestigations = encountersList
+      .flatMap((e) => e.investigations || [])
+      .slice(0, 3)
+      .map((i) => ({ name: i.name, status: i.status, value: i.result }));
+
     return NextResponse.json({
       success: true,
       authorized: true,
@@ -169,20 +187,26 @@ export async function GET(
         medibase_id: medibaseId,
         name: patientName,
         age: patientAge,
-        allergies: SAMPLE_PATIENT.allergies,
-        chronicConditions: SAMPLE_PATIENT.chronicConditions,
-        currentMedications: SAMPLE_PATIENT.currentMedications,
+        allergies: allergies || ["Penicillin Allergy"],
+        chronicConditions: activeConditions.slice(0, 3),
+        currentMedications: activeMeds.slice(0, 4).map((m) => ({
+          name: m,
+          dosage: "Standard",
+          frequency: "Prescribed",
+          prescribedBy: "Dr. Rahul Sharma",
+          startDate: encountersList[0]?.date || "Recent",
+        })),
       },
       clinical_snapshot: {
-        last_visit: "Oct 12, 2023",
-        active_conditions: ["Hypertension", "Seasonal Allergies"],
-        current_medications: ["Lisinopril 10mg", "Cetirizine 10mg"],
-        recent_investigations: [
-          { name: "Lipid Profile", status: "Normal" },
-          { name: "HbA1c", value: "6.2%" },
+        last_visit: encountersList[0]?.date ? `${encountersList[0].date}${encountersList[0].time ? ` (${encountersList[0].time})` : ""}` : "No visits recorded",
+        active_conditions: activeConditions.length > 0 ? activeConditions : ["Essential Hypertension"],
+        current_medications: activeMeds.length > 0 ? activeMeds : ["Telmisartan 40mg"],
+        recent_investigations: recentInvestigations.length > 0 ? recentInvestigations : [
+          { name: "Blood Complete Hemogram", status: "Completed", value: "Normal Parameters" },
+          { name: "Standard 12-Lead ECG", status: "Completed", value: "Normal Sinus Rhythm" },
         ],
       },
-      encounters: SAMPLE_VISITS,
+      encounters: encountersList,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to verify clinical access.";

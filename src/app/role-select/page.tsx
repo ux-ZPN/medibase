@@ -1,7 +1,19 @@
+"use client";
+
+import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { User, Stethoscope, ArrowLeft, ArrowRight, Shield, Activity } from "lucide-react";
 
 export default function RoleSelectPage() {
+  const router = useRouter();
+
+  const handleSelectRole = (role: "patient" | "hospital_staff", targetUrl: string) => {
+    document.cookie = `medibase_demo_role=${role}; path=/; max-age=604800; SameSite=Lax`;
+    router.push(targetUrl);
+    router.refresh();
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-sky-500 selection:text-white">
       {/* Top Bar */}
@@ -35,9 +47,10 @@ export default function RoleSelectPage() {
         {/* 2 Role Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
           {/* Patient Card */}
-          <Link
-            href="/patient/dashboard"
-            className="group relative flex flex-col justify-between p-8 rounded-2xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-sky-500/60 transition-all duration-300 shadow-lg hover:shadow-sky-500/10 hover:-translate-y-1"
+          <button
+            type="button"
+            onClick={() => handleSelectRole("patient", "/patient/dashboard")}
+            className="group relative flex flex-col justify-between p-8 rounded-2xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-sky-500/60 transition-all duration-300 shadow-lg hover:shadow-sky-500/10 hover:-translate-y-1 text-left cursor-pointer"
           >
             <div className="space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-sky-950 border border-sky-800/60 flex items-center justify-center text-sky-400 group-hover:scale-110 group-hover:bg-sky-500 group-hover:text-slate-950 transition-all duration-300">
@@ -53,16 +66,17 @@ export default function RoleSelectPage() {
               </div>
             </div>
 
-            <div className="mt-8 pt-4 border-t border-slate-800/80 flex items-center justify-between text-sm font-semibold text-sky-400 group-hover:text-sky-300">
+            <div className="mt-8 pt-4 border-t border-slate-800/80 flex items-center justify-between text-sm font-semibold text-sky-400 group-hover:text-sky-300 w-full">
               <span>Open Patient Dashboard</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
-          </Link>
+          </button>
 
           {/* Hospital Staff Card */}
-          <Link
-            href="/staff/dashboard"
-            className="group relative flex flex-col justify-between p-8 rounded-2xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-teal-500/60 transition-all duration-300 shadow-lg hover:shadow-teal-500/10 hover:-translate-y-1"
+          <button
+            type="button"
+            onClick={() => handleSelectRole("hospital_staff", "/staff/dashboard")}
+            className="group relative flex flex-col justify-between p-8 rounded-2xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-teal-500/60 transition-all duration-300 shadow-lg hover:shadow-teal-500/10 hover:-translate-y-1 text-left cursor-pointer"
           >
             <div className="space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-teal-950 border border-teal-800/60 flex items-center justify-center text-teal-400 group-hover:scale-110 group-hover:bg-teal-400 group-hover:text-slate-950 transition-all duration-300">
@@ -78,17 +92,24 @@ export default function RoleSelectPage() {
               </div>
             </div>
 
-            <div className="mt-8 pt-4 border-t border-slate-800/80 flex items-center justify-between text-sm font-semibold text-teal-400 group-hover:text-teal-300">
+            <div className="mt-8 pt-4 border-t border-slate-800/80 flex items-center justify-between text-sm font-semibold text-teal-400 group-hover:text-teal-300 w-full">
               <span>Open Provider Dashboard</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
-          </Link>
+          </button>
         </div>
 
-        <p className="text-xs text-slate-500 mt-8 text-center">
-          In production, Supabase Auth securely verifies credentials and multi-factor authorization prior to portal entry.
-        </p>
+        <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-xs text-slate-500">
+          <Link href="/patient/login" className="hover:text-sky-400 transition-colors">
+            Patient Login Page
+          </Link>
+          <span>•</span>
+          <Link href="/staff/login" className="hover:text-teal-400 transition-colors">
+            Hospital Staff Login Page
+          </Link>
+        </div>
       </main>
     </div>
   );
 }
+

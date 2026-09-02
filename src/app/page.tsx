@@ -1,5 +1,16 @@
 import React from "react";
 import Link from "next/link";
+import {
+  ArrowRight,
+  ShieldCheck,
+  Play,
+  AlertTriangle,
+  Clock,
+  BookOpen,
+  Lock,
+  Zap,
+  CalendarCheck,
+} from "lucide-react";
 import "../styles/landing.css";
 
 export default function LandingPage() {
@@ -46,9 +57,9 @@ export default function LandingPage() {
 
           {/* Header call to action */}
           <div className="nav-actions">
-            <Link className="button button-primary" href="/role-select">
+            <Link className="button button-primary gap-1.5" href="/role-select">
               <span>Get started</span>
-              <i className="fa-solid fa-arrow-right ml-2 text-xs"></i>
+              <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Link>
           </div>
         </div>
@@ -60,7 +71,7 @@ export default function LandingPage() {
         <section className="hero section-shell" id="top" aria-labelledby="hero-title">
           <div className="hero-copy" id="about">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-semibold uppercase tracking-wider mb-4">
-              <i className="fa-solid fa-shield-halved text-teal-600"></i>
+              <ShieldCheck className="w-4 h-4 text-teal-600" />
               Secure Longitudinal Records
             </div>
             <h1 id="hero-title">
@@ -81,7 +92,7 @@ export default function LandingPage() {
                 Get started
               </Link>
               <a className="button button-secondary" href="#workflow">
-                <i className="fa-solid fa-play"></i>
+                <Play className="w-3.5 h-3.5 fill-current" />
                 <span>See how it works</span>
               </a>
             </div>
@@ -160,7 +171,7 @@ export default function LandingPage() {
           <div className="card-grid cost-grid">
             <article className="info-card tint-pink">
               <span className="card-icon">
-                <i className="fa-solid fa-triangle-exclamation danger"></i>
+                <AlertTriangle className="w-6 h-6 text-rose-600" />
               </span>
               <h3>Adverse Events</h3>
               <p>
@@ -171,7 +182,7 @@ export default function LandingPage() {
 
             <article className="info-card tint-gray">
               <span className="card-icon">
-                <i className="fa-regular fa-clock"></i>
+                <Clock className="w-6 h-6 text-slate-500" />
               </span>
               <h3>Wasted Time</h3>
               <p>
@@ -182,7 +193,7 @@ export default function LandingPage() {
 
             <article className="info-card tint-gray">
               <span className="card-icon">
-                <i className="fa-solid fa-book-medical"></i>
+                <BookOpen className="w-6 h-6 text-slate-500" />
               </span>
               <h3>Redundant Testing</h3>
               <p>
@@ -239,7 +250,7 @@ export default function LandingPage() {
             <div className="benefit-grid">
               <article>
                 <span className="benefit-icon">
-                  <i className="fa-solid fa-lock"></i>
+                  <Lock className="w-5 h-5 text-[#087f80]" />
                 </span>
                 <h3>Uncompromising Security</h3>
                 <p>
@@ -250,7 +261,7 @@ export default function LandingPage() {
 
               <article>
                 <span className="benefit-icon">
-                  <i className="fa-solid fa-bolt-lightning"></i>
+                  <Zap className="w-5 h-5 text-[#087f80]" />
                 </span>
                 <h3>Lightning Speed</h3>
                 <p>
@@ -261,7 +272,7 @@ export default function LandingPage() {
 
               <article>
                 <span className="benefit-icon">
-                  <i className="fa-regular fa-calendar-check"></i>
+                  <CalendarCheck className="w-5 h-5 text-[#087f80]" />
                 </span>
                 <h3>Absolute Accuracy</h3>
                 <p>
@@ -332,7 +343,7 @@ export default function LandingPage() {
                 className="button button-primary inline-flex items-center justify-center gap-3 text-base px-8 py-3.5 shadow-lg"
               >
                 <span>Launch MediBase Platform</span>
-                <i className="fa-solid fa-arrow-right"></i>
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </section>

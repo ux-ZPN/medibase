@@ -89,6 +89,7 @@ function StaffLoginForm() {
     setSuccessMessage(null);
 
     try {
+      document.cookie = "medibase_active_patient_id=; path=/; max-age=0; SameSite=Lax";
       document.cookie = "medibase_demo_role=hospital_staff; path=/; max-age=604800; SameSite=Lax";
 
       // 1. Call server demo-login endpoint to seed default staff DB record
@@ -114,7 +115,7 @@ function StaffLoginForm() {
       setSuccessMessage("Authenticated as default test doctor: Dr. Rahul Sharma");
       setTimeout(() => {
         window.location.href = data.redirect || "/staff/dashboard";
-      }, 300);
+      }, 200);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to execute quick test login.";
       setErrorMessage(msg);
@@ -130,6 +131,8 @@ function StaffLoginForm() {
     setSuccessMessage(null);
 
     try {
+      document.cookie = "medibase_active_patient_id=; path=/; max-age=0; SameSite=Lax";
+      document.cookie = "medibase_demo_role=hospital_staff; path=/; max-age=604800; SameSite=Lax";
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),

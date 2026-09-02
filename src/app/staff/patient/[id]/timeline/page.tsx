@@ -30,6 +30,8 @@ interface TimelineResponse {
   encounters?: Array<{
     id: string;
     date: string;
+    time?: string;
+    timestamp?: string;
     hospital_name: string;
     department: string;
     doctor_name: string;
@@ -264,7 +266,7 @@ export default function StaffPatientTimelinePage({
                               {enc.visit_type}
                             </h3>
                             <p className="text-xs text-slate-500 mt-0.5">
-                              📅 {enc.date} • {enc.hospital_name} {enc.department ? `(${enc.department})` : ""}
+                              📅 {enc.date}{enc.time ? ` • ⏰ ${enc.time}` : ""} • {enc.hospital_name} {enc.department ? `(${enc.department})` : ""}
                             </p>
                           </div>
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">

@@ -14,6 +14,8 @@ import {
 interface PatientEncounter {
   id: string;
   date: string;
+  time?: string;
+  timestamp?: string;
   hospital_name: string;
   department: string;
   doctor_name: string;
@@ -21,7 +23,7 @@ interface PatientEncounter {
   visit_type: string;
   chief_complaint: string;
   diagnoses: Array<{ name: string; code?: string; is_primary?: boolean }>;
-  prescriptions: Array<{ name: string; dosage?: string; frequency?: string }>;
+  prescriptions: Array<{ name: string; dosage?: string; frequency?: string; instructions?: string }>;
   investigations?: Array<{ name: string; status?: string; result?: string }>;
   reports?: Array<{ title: string; file_name: string; file_url?: string }>;
   clinical_notes?: string;
@@ -140,10 +142,16 @@ export default function PatientTimelinePage() {
                 <div className="absolute -left-6 sm:-left-8 top-1.5 w-3 h-3 rounded-full bg-[#006699] ring-4 ring-[#F8FAFC]" />
 
                 <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-bold text-[#006699] uppercase tracking-wider">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="font-bold text-[#006699] uppercase tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5" />
                       {enc.date}
                     </span>
+                    {enc.time && (
+                      <span className="font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
+                        ⏰ {enc.time}
+                      </span>
+                    )}
                     <span className="px-2 py-0.5 rounded bg-sky-50 text-sky-700 font-semibold text-[10px]">
                       {enc.visit_type || "Clinical Visit"}
                     </span>

@@ -25,10 +25,53 @@ interface IdentifiedPatient {
   occupation: string | null;
 }
 
-export default function FindPatientPage() {
-  const [searchQuery, setSearchQuery] = useState("MB-102394");
-  const [isLoading, setIsLoading] = useState(false);
-  const [identifiedPatient, setIdentifiedPatient] = useState<IdentifiedPatient | null>({
+const LOCAL_PATIENTS_CACHE: Record<string, IdentifiedPatient> = {
+  "MB-100001": {
+    id: "10000000-0000-0000-0000-000000000001",
+    medibase_id: "MB-100001",
+    full_name: "Anjali Mehta",
+    age: 36,
+    gender: "Female",
+    blood_group: "O-",
+    occupation: "School Teacher",
+  },
+  "MB-100002": {
+    id: "10000000-0000-0000-0000-000000000002",
+    medibase_id: "MB-100002",
+    full_name: "Vikram Singh",
+    age: 50,
+    gender: "Male",
+    blood_group: "A+",
+    occupation: "Farmer",
+  },
+  "MB-100003": {
+    id: "10000000-0000-0000-0000-000000000003",
+    medibase_id: "MB-100003",
+    full_name: "Priya Reddy",
+    age: 33,
+    gender: "Female",
+    blood_group: "AB+",
+    occupation: "Marketing Manager",
+  },
+  "MB-100004": {
+    id: "10000000-0000-0000-0000-000000000004",
+    medibase_id: "MB-100004",
+    full_name: "Suresh Patel",
+    age: 57,
+    gender: "Male",
+    blood_group: "O+",
+    occupation: "Shopkeeper",
+  },
+  "MB-100005": {
+    id: "10000000-0000-0000-0000-000000000005",
+    medibase_id: "MB-100005",
+    full_name: "Kavita Sharma",
+    age: 46,
+    gender: "Female",
+    blood_group: "B-",
+    occupation: "Homemaker",
+  },
+  "MB-102394": {
     id: "demo-patient-rec-0001",
     medibase_id: "MB-102394",
     full_name: "Rahul Sharma",
@@ -36,15 +79,29 @@ export default function FindPatientPage() {
     gender: "Male",
     blood_group: "O+",
     occupation: "Accountant",
-  });
+  },
+};
+
+export default function FindPatientPage() {
+  const [searchQuery, setSearchQuery] = useState("MB-102394");
+  const [isLoading, setIsLoading] = useState(false);
+  const [identifiedPatient, setIdentifiedPatient] = useState<IdentifiedPatient | null>(
+    LOCAL_PATIENTS_CACHE["MB-102394"]
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const cleanId = searchQuery.trim().toUpperCase();
-
+  const performLookup = async (id: string) => {
+    const cleanId = id.trim().toUpperCase();
     if (!cleanId) {
-      setErrorMessage("Please enter a valid MediBase ID (e.g. MB-102394).");
+      setErrorMessage("Please enter a valid MediBase ID (e.g. MB-102394 or MB-100001).");
+      return;
+    }
+
+    // Instant local cache hit (<1ms response)
+    if (LOCAL_PATIENTS_CACHE[cleanId]) {
+      setIdentifiedPatient(LOCAL_PATIENTS_CACHE[cleanId]);
+      setErrorMessage(null);
+      setIsLoading(false);
       return;
     }
 
@@ -74,9 +131,14 @@ export default function FindPatientPage() {
     }
   };
 
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    performLookup(searchQuery);
+  };
+
   const handleSelectDemoId = (id: string) => {
     setSearchQuery(id);
-    setErrorMessage(null);
+    performLookup(id);
   };
 
   return (

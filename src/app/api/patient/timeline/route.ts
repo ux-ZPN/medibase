@@ -76,8 +76,9 @@ export async function GET() {
     }
 
     // 2. Resolve Authenticated Patient Identity (Strict Ownership Verification)
+    const activePatientCookie = cookieStore.get("medibase_active_patient_id")?.value;
     let patientRecordId = "demo-patient-rec-0001";
-    let medibaseId = "MB-100001";
+    let medibaseId = activePatientCookie ? activePatientCookie.trim().toUpperCase() : "MB-100001";
 
     if (user) {
       const { data: patient } = await supabase

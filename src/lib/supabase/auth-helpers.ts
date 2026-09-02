@@ -33,24 +33,123 @@ export interface UserProfile {
   };
 }
 
-const DEFAULT_PATIENT_PROFILE: UserProfile = {
-  id: "demo-patient-0001",
-  email: "demo.patient@medibase.org",
-  role: "patient",
-  full_name: "Rahul Sharma",
-  phone_number: "+91 98765 43210",
-  patient_data: {
-    id: "demo-patient-rec-0001",
-    medibase_id: "MB-102394",
-    qr_code_token: "d3b07384-d113-4632-b7e6-8c2ff6d8b991",
-    aadhaar_last4: "1234",
-    blood_group: "O+",
-    allergies: ["Penicillin", "Dust Mites"],
-    chronic_conditions: ["Mild Hypertension"],
-    date_of_birth: "1994-06-15",
-    gender: "Male",
+const KNOWN_PATIENTS_MAP: Record<string, UserProfile> = {
+  "MB-100001": {
+    id: "10000000-0000-0000-0000-000000000001",
+    email: "anjali.mehta@medibase.org",
+    role: "patient",
+    full_name: "Anjali Mehta",
+    phone_number: "+91 98765 10001",
+    patient_data: {
+      id: "10000000-0000-0000-0000-000000000001",
+      medibase_id: "MB-100001",
+      qr_code_token: "d3b07384-0001-4632-b7e6-8c2ff6d8b901",
+      aadhaar_last4: "8492",
+      blood_group: "O-",
+      occupation: "School Teacher",
+      allergies: ["Penicillin", "Sulfa Drugs"],
+      chronic_conditions: ["Seasonal Bronchitis"],
+      date_of_birth: "1990-07-05",
+      gender: "Female",
+    },
+  },
+  "MB-100002": {
+    id: "10000000-0000-0000-0000-000000000002",
+    email: "vikram.singh@medibase.org",
+    role: "patient",
+    full_name: "Vikram Singh",
+    phone_number: "+91 98765 10002",
+    patient_data: {
+      id: "10000000-0000-0000-0000-000000000002",
+      medibase_id: "MB-100002",
+      qr_code_token: "d3b07384-0002-4632-b7e6-8c2ff6d8b902",
+      aadhaar_last4: "2941",
+      blood_group: "A+",
+      occupation: "Farmer",
+      allergies: ["Pollen"],
+      chronic_conditions: ["Osteoarthritis"],
+      date_of_birth: "1975-11-22",
+      gender: "Male",
+    },
+  },
+  "MB-100003": {
+    id: "10000000-0000-0000-0000-000000000003",
+    email: "priya.reddy@medibase.org",
+    role: "patient",
+    full_name: "Priya Reddy",
+    phone_number: "+91 98765 10003",
+    patient_data: {
+      id: "10000000-0000-0000-0000-000000000003",
+      medibase_id: "MB-100003",
+      qr_code_token: "d3b07384-0003-4632-b7e6-8c2ff6d8b903",
+      aadhaar_last4: "6321",
+      blood_group: "AB+",
+      occupation: "Marketing Manager",
+      allergies: ["Peanuts", "Dust"],
+      chronic_conditions: ["Type 2 Diabetes", "Hypertension"],
+      date_of_birth: "1993-01-18",
+      gender: "Female",
+    },
+  },
+  "MB-100004": {
+    id: "10000000-0000-0000-0000-000000000004",
+    email: "suresh.patel@medibase.org",
+    role: "patient",
+    full_name: "Suresh Patel",
+    phone_number: "+91 98765 10004",
+    patient_data: {
+      id: "10000000-0000-0000-0000-000000000004",
+      medibase_id: "MB-100004",
+      qr_code_token: "d3b07384-0004-4632-b7e6-8c2ff6d8b904",
+      aadhaar_last4: "4920",
+      blood_group: "O+",
+      occupation: "Shopkeeper",
+      allergies: ["Ibuprofen"],
+      chronic_conditions: ["Coronary Artery Disease"],
+      date_of_birth: "1968-09-30",
+      gender: "Male",
+    },
+  },
+  "MB-100005": {
+    id: "10000000-0000-0000-0000-000000000005",
+    email: "kavita.sharma@medibase.org",
+    role: "patient",
+    full_name: "Kavita Sharma",
+    phone_number: "+91 98765 10005",
+    patient_data: {
+      id: "10000000-0000-0000-0000-000000000005",
+      medibase_id: "MB-100005",
+      qr_code_token: "d3b07384-0005-4632-b7e6-8c2ff6d8b905",
+      aadhaar_last4: "9142",
+      blood_group: "B-",
+      occupation: "Homemaker",
+      allergies: ["Latex"],
+      chronic_conditions: ["Hypothyroidism"],
+      date_of_birth: "1980-05-14",
+      gender: "Female",
+    },
+  },
+  "MB-102394": {
+    id: "demo-patient-0001",
+    email: "demo.patient@medibase.org",
+    role: "patient",
+    full_name: "Rahul Sharma",
+    phone_number: "+91 98765 43210",
+    patient_data: {
+      id: "demo-patient-rec-0001",
+      medibase_id: "MB-102394",
+      qr_code_token: "d3b07384-d113-4632-b7e6-8c2ff6d8b991",
+      aadhaar_last4: "1234",
+      blood_group: "O+",
+      allergies: ["Penicillin", "Dust Mites"],
+      chronic_conditions: ["Mild Hypertension"],
+      date_of_birth: "1994-06-15",
+      gender: "Male",
+    },
   },
 };
+
+const DEFAULT_PATIENT_PROFILE = KNOWN_PATIENTS_MAP["MB-102394"];
 
 const DEFAULT_STAFF_PROFILE: UserProfile = {
   id: "demo-staff-0001",
@@ -77,12 +176,19 @@ function getDemoCookieRole(): "patient" | "hospital_staff" | null {
   return null;
 }
 
+function getActivePatientIdFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)medibase_active_patient_id=([^;]*)/);
+  return match ? decodeURIComponent(match[1]).trim().toUpperCase() : null;
+}
+
 /**
  * Fetches the user profile, role, and hospital association securely from Supabase.
  * Never relies on unauthenticated client-provided parameters.
  */
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   const demoRole = getDemoCookieRole();
+  const activePatientId = getActivePatientIdFromCookie();
 
   const supabase = createClient();
   const {
@@ -91,7 +197,21 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    if (demoRole === "patient") return DEFAULT_PATIENT_PROFILE;
+    if (demoRole === "patient") {
+      if (activePatientId && KNOWN_PATIENTS_MAP[activePatientId]) {
+        return KNOWN_PATIENTS_MAP[activePatientId];
+      }
+      if (activePatientId) {
+        return {
+          ...DEFAULT_PATIENT_PROFILE,
+          patient_data: {
+            ...DEFAULT_PATIENT_PROFILE.patient_data!,
+            medibase_id: activePatientId,
+          },
+        };
+      }
+      return DEFAULT_PATIENT_PROFILE;
+    }
     if (demoRole === "hospital_staff") return DEFAULT_STAFF_PROFILE;
     return null;
   }

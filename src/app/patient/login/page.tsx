@@ -26,8 +26,12 @@ function PatientLoginForm() {
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect") || "/patient/dashboard";
 
-  // Tab State: "register" vs "login"
-  const [authMode, setAuthMode] = useState<"register" | "login">("register");
+  // Tab State: "fast" vs "register" vs "login"
+  const [authMode, setAuthMode] = useState<"fast" | "register" | "login">("fast");
+
+  // Fast Login Field
+  const [medibaseIdInput, setMedibaseIdInput] = useState("MB-100001");
+  const [fastLoading, setFastLoading] = useState(false);
 
   // Registration Fields
   const [fullName, setFullName] = useState("");
@@ -61,44 +65,49 @@ function PatientLoginForm() {
     setAadhaar(formatted);
   };
 
-  // 1-Click Quick Demo Sign-In (For Testing)
-  const handleQuickDemoLogin = async () => {
-    setDemoLoading(true);
+  // Fast Login with MediBase ID (e.g., MB-100001)
+  const handleFastLoginSubmit = async (e?: React.FormEvent, customId?: string) => {
+    if (e) e.preventDefault();
+    const idToUse = (customId || medibaseIdInput).trim().toUpperCase();
+
+    if (!idToUse) {
+      setErrorMessage("Please enter a valid MediBase ID (e.g. MB-100001).");
+      return;
+    }
+
+    setFastLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
 
     try {
-      document.cookie = "medibase_demo_role=patient; path=/; max-age=604800; SameSite=Lax";
-
-      // 1. Call server demo-login endpoint to seed default DB record
-      const res = await fetch("/api/auth/demo-login", {
+      const res = await fetch("/api/auth/fast-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "patient" }),
+        body: JSON.stringify({ medibaseId: idToUse }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json();
 
-      // 2. Also try sign in on client supabase instance
-      try {
-        const supabase = createClient();
-        await supabase.auth.signInWithPassword({
-          email: "demo.patient@medibase.org",
-          password: "DemoPatient2024!",
-        });
-      } catch (e) {
-        console.warn("Client supabase signIn ignored in demo mode", e);
+      if (!res.ok || !data.success) {
+        setErrorMessage(data.error || "Failed to log in with this MediBase ID.");
+        setFastLoading(false);
+        return;
       }
 
-      setSuccessMessage("Authenticated as default test patient: Rahul Sharma");
+      setSuccessMessage(data.message || `Authenticated as ${idToUse}`);
       setTimeout(() => {
-        window.location.href = data.redirect || "/patient/dashboard";
-      }, 300);
+        window.location.href = data.redirect || redirectUrl;
+      }, 250);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to execute quick test login.";
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred during fast login.";
       setErrorMessage(msg);
-      setDemoLoading(false);
+      setFastLoading(false);
     }
+  };
+
+  // 1-Click Quick Demo Sign-In (For Testing)
+  const handleQuickDemoLogin = async () => {
+    handleFastLoginSubmit(undefined, "MB-102394");
   };
 
   // 1. Submit Registration Form
@@ -317,6 +326,8 @@ function PatientLoginForm() {
       <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
         {otpSent
           ? "Verify your Identity"
+          : authMode === "fast"
+          ? "Fast Patient Login"
           : authMode === "register"
           ? "Register with MediBase"
           : "Access your MediBase"}
@@ -325,50 +336,31 @@ function PatientLoginForm() {
       <p className="text-sm text-slate-500 mb-6 max-w-xs mx-auto">
         {otpSent
           ? `Enter the 6-digit verification code sent to ${activeEmail}`
+          : authMode === "fast"
+          ? "Enter your unique MediBase ID (e.g. MB-100001) for instant access."
           : authMode === "register"
           ? "Create your longitudinal health profile and receive a unique MediBase ID."
           : "Enter your registered email to receive a secure login code."}
       </p>
 
-      {/* 1-Click Quick Demo Sign-In Box (For Testing) */}
-      {!otpSent && (
-        <div className="mb-6 p-3 bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-xl text-left shadow-sm">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#006699] flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#006699]" />
-              Quick Test Sign In
-            </span>
-            <span className="text-[10px] font-mono font-bold text-sky-800 bg-sky-100 px-2 py-0.5 rounded border border-sky-200">
-              MB-102394
-            </span>
-          </div>
-          <p className="text-xs text-slate-600 mb-2.5">
-            Click below to instantly open the default patient account (Rahul Sharma) without entering any details.
-          </p>
-          <button
-            type="button"
-            onClick={handleQuickDemoLogin}
-            disabled={demoLoading}
-            className="w-full py-2.5 px-3 bg-[#0F172A] hover:bg-slate-800 disabled:opacity-60 text-white font-bold text-xs rounded-lg transition-all duration-150 flex items-center justify-center gap-2 shadow cursor-pointer"
-          >
-            {demoLoading ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Signing in to Default Account...</span>
-              </>
-            ) : (
-              <>
-                <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                <span>Open Default Account (Rahul Sharma)</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
-
       {/* Tabs Switcher (Only shown before OTP is sent) */}
       {!otpSent && (
         <div className="flex bg-slate-100 p-1 rounded-xl mb-6 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode("fast");
+              setErrorMessage(null);
+            }}
+            className={`flex-1 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              authMode === "fast"
+                ? "bg-[#006699] text-white shadow-sm font-bold"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Fast Login</span>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -381,7 +373,7 @@ function PatientLoginForm() {
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            New Patient Register
+            New Patient
           </button>
           <button
             type="button"
@@ -395,7 +387,7 @@ function PatientLoginForm() {
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Existing Patient Sign In
+            Email OTP
           </button>
         </div>
       )}
@@ -417,7 +409,78 @@ function PatientLoginForm() {
       )}
 
       {!otpSent ? (
-        authMode === "register" ? (
+        authMode === "fast" ? (
+          /* FAST LOGIN FORM */
+          <form onSubmit={handleFastLoginSubmit} className="space-y-4 text-left">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Patient MediBase ID <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <CreditCard className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={medibaseIdInput}
+                  onChange={(e) => setMedibaseIdInput(e.target.value.toUpperCase())}
+                  placeholder="e.g. MB-100001 or MB-102394"
+                  required
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#006699] focus:border-transparent transition-all tracking-wider"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Enter your unique MediBase ID number to directly open your account.
+              </p>
+            </div>
+
+            {/* Quick Demo ID Suggestion Chips */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+              <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5 uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-[#006699]" />
+                Select a Test Patient Account:
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { id: "MB-100001", name: "Anjali Mehta" },
+                  { id: "MB-100002", name: "Vikram Singh" },
+                  { id: "MB-100003", name: "Priya Reddy" },
+                  { id: "MB-102394", name: "Rahul Sharma" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setMedibaseIdInput(item.id);
+                      handleFastLoginSubmit(undefined, item.id);
+                    }}
+                    className="p-1.5 px-2 bg-white hover:bg-sky-50 hover:border-sky-300 text-slate-700 hover:text-[#006699] font-mono text-[11px] rounded border border-slate-200 transition-colors flex items-center justify-between cursor-pointer shadow-xs text-left"
+                  >
+                    <span className="font-bold">{item.id}</span>
+                    <span className="text-[10px] text-slate-500 font-sans truncate ml-1">{item.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={fastLoading}
+              className="w-full py-3 px-4 bg-[#0F172A] hover:bg-slate-800 disabled:opacity-60 text-white font-medium text-sm rounded-lg shadow transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer mt-2"
+            >
+              {fastLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Logging into Account...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <span>Fast Login to Patient Account</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+        ) : authMode === "register" ? (
           /* PATIENT REGISTRATION FORM */
           <form onSubmit={handleRegisterSubmit} className="space-y-4 text-left">
             {/* Full Name */}
