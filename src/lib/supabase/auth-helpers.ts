@@ -202,6 +202,34 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
         return KNOWN_PATIENTS_MAP[activePatientId];
       }
       if (activePatientId) {
+        try {
+          const { findRegisteredPatient } = require("@/lib/identity/access-requests-store");
+          const reg = findRegisteredPatient(activePatientId);
+          if (reg) {
+            return {
+              id: reg.id,
+              email: reg.email || `${reg.medibase_id.toLowerCase()}@medibase.org`,
+              role: "patient",
+              full_name: reg.full_name,
+              phone_number: reg.phone_number,
+              patient_data: {
+                id: reg.id,
+                medibase_id: reg.medibase_id,
+                qr_code_token: `token-${reg.medibase_id.toLowerCase()}`,
+                aadhaar_last4: "8899",
+                blood_group: reg.blood_group,
+                occupation: reg.occupation,
+                allergies: reg.allergies,
+                chronic_conditions: reg.chronic_conditions,
+                date_of_birth: reg.date_of_birth,
+                gender: reg.gender,
+              },
+            };
+          }
+        } catch {
+          // Non-blocking fallback
+        }
+
         return {
           ...DEFAULT_PATIENT_PROFILE,
           patient_data: {

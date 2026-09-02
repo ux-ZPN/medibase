@@ -91,9 +91,15 @@ export default function FindPatientPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const performLookup = async (id: string) => {
-    const cleanId = id.trim().toUpperCase();
+    let cleanId = id.trim().toUpperCase().replace(/\s+/g, "");
+    if (/^\d{6}$/.test(cleanId)) {
+      cleanId = `MB-${cleanId}`;
+    } else if (/^MB\d+$/i.test(cleanId)) {
+      cleanId = cleanId.replace(/^MB/i, "MB-");
+    }
+
     if (!cleanId) {
-      setErrorMessage("Please enter a valid MediBase ID (e.g. MB-102394 or MB-100001).");
+      setErrorMessage("Please enter a valid MediBase ID (e.g. MB-102394, MB-100001, or MB-100011).");
       return;
     }
 
@@ -145,13 +151,23 @@ export default function FindPatientPage() {
     <StaffShell activeNav="find-patient">
       <div className="space-y-8 max-w-5xl">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Find a Patient
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Search by MediBase ID or scan their QR code to securely identify the patient before requesting access.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              Find a Patient
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Search by MediBase ID or scan their QR code to securely identify the patient before requesting access.
+            </p>
+          </div>
+
+          <Link
+            href="/staff/register-patient"
+            className="px-4 py-2.5 bg-[#006699] hover:bg-[#005580] text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-2 self-start sm:self-auto shrink-0"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>+ Onboard / Register Patient</span>
+          </Link>
         </div>
 
         {/* Search Box Card */}

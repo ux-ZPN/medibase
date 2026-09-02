@@ -482,7 +482,24 @@ function PatientLoginForm() {
           </form>
         ) : authMode === "register" ? (
           /* PATIENT REGISTRATION FORM */
-          <form onSubmit={handleRegisterSubmit} className="space-y-4 text-left">
+          <div className="space-y-4 text-left">
+            <Link
+              href="/patient/register"
+              className="block p-3.5 bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-xl hover:border-sky-300 transition-all shadow-sm group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#006699] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Full Registration & Past History Upload
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#006699] group-hover:translate-x-0.5 transition-transform" />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Enter vitals, allergies, emergency contacts, and past medical history to get a new MediBase ID.
+              </p>
+            </Link>
+
+            <form onSubmit={handleRegisterSubmit} className="space-y-4 text-left">
             {/* Full Name */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -578,7 +595,8 @@ function PatientLoginForm() {
               )}
             </button>
           </form>
-        ) : (
+        </div>
+      ) : (
           /* PATIENT LOGIN FORM */
           <form onSubmit={handleLoginSubmit} className="space-y-5 text-left">
             <div>

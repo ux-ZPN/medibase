@@ -111,16 +111,32 @@ export async function POST(request: Request) {
       );
     }
 
-    const patient = FAST_LOGIN_PATIENTS[rawId] || {
-      id: `pat-${rawId.toLowerCase()}`,
-      medibase_id: rawId,
-      full_name: `Patient ${rawId}`,
-      phone_number: "+91 98765 00000",
-      blood_group: "O+",
-      gender: "Not Specified",
-      date_of_birth: "1995-01-01",
-      occupation: "Verified MediBase Citizen",
-    };
+    const { findRegisteredPatient } = await import("@/lib/identity/access-requests-store");
+    const regPatient = findRegisteredPatient(rawId);
+
+    const patient = regPatient
+      ? {
+          id: regPatient.id,
+          medibase_id: regPatient.medibase_id,
+          full_name: regPatient.full_name,
+          phone_number: regPatient.phone_number,
+          blood_group: regPatient.blood_group,
+          gender: regPatient.gender,
+          date_of_birth: regPatient.date_of_birth,
+          occupation: regPatient.occupation,
+          allergies: regPatient.allergies,
+          chronic_conditions: regPatient.chronic_conditions,
+        }
+      : FAST_LOGIN_PATIENTS[rawId] || {
+          id: `pat-${rawId.toLowerCase()}`,
+          medibase_id: rawId,
+          full_name: `Patient ${rawId}`,
+          phone_number: "+91 98765 00000",
+          blood_group: "O+",
+          gender: "Not Specified",
+          date_of_birth: "1995-01-01",
+          occupation: "Verified MediBase Citizen",
+        };
 
     const response = NextResponse.json({
       success: true,

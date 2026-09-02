@@ -131,6 +131,45 @@ export interface StoredMedicalReport {
   created_at: string;
 }
 
+export interface StoredPatientRegistration {
+  id: string;
+  medibase_id: string;
+  full_name: string;
+  phone_number: string;
+  email?: string;
+  occupation: string;
+  date_of_birth: string;
+  gender: string;
+  blood_group: string;
+  height_cm?: string | number;
+  weight_kg?: string | number;
+  allergies: string[];
+  emergency_contact: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  vitals: {
+    pulse: number;
+    blood_pressure: string;
+    temperature: string;
+    spo2?: number;
+  };
+  chronic_conditions?: string[];
+  past_history?: Array<{
+    date: string;
+    time?: string;
+    hospital_name: string;
+    department?: string;
+    doctor_name: string;
+    visit_type?: string;
+    diagnosis: string;
+    treatment: string;
+    notes?: string;
+  }>;
+  created_at: string;
+}
+
 export function extractPatientIndex(idOrStr: string): number | null {
   if (!idOrStr) return null;
   const digits = idOrStr.replace(/\D/g, "");
@@ -149,7 +188,12 @@ const globalStore = globalThis as unknown as {
   __medibase_audit_logs?: StoredAuditLog[];
   __medibase_clinical_encounters?: Record<string, ClinicalEncounter[]>;
   __medibase_medical_reports?: StoredMedicalReport[];
+  __medibase_registered_patients?: Record<string, StoredPatientRegistration>;
 };
+
+if (!globalStore.__medibase_registered_patients) {
+  globalStore.__medibase_registered_patients = {};
+}
 
 if (!globalStore.__medibase_access_requests) {
   globalStore.__medibase_access_requests = [
@@ -1492,4 +1536,190 @@ export function getPatientReports(patientIdentifier: string): StoredMedicalRepor
 
 export function getReportById(reportId: string): StoredMedicalReport | undefined {
   return runtimeMedicalReports.find((r) => r.id === reportId || r.file_name === reportId);
+}
+
+const runtimeRegisteredPatients = globalStore.__medibase_registered_patients!;
+
+export function getNextMediBaseId(): string {
+  const existingIds = Object.keys(runtimeRegisteredPatients)
+    .concat(Object.keys(BASELINE_ENCOUNTERS))
+    .filter((id) => id.startsWith("MB-"));
+
+  let maxNum = 100010;
+  for (const id of existingIds) {
+    const num = parseInt(id.replace(/\D/g, ""), 10);
+    if (!isNaN(num) && num > maxNum && num < 900000) {
+      maxNum = num;
+    }
+  }
+  return `MB-${maxNum + 1}`;
+}
+
+export function registerNewPatient(
+  data: Omit<StoredPatientRegistration, "id" | "medibase_id" | "created_at"> & {
+    id?: string;
+    medibase_id?: string;
+  }
+): StoredPatientRegistration {
+  const newMedibaseId = data.medibase_id || getNextMediBaseId();
+  const patientId = data.id || `pat-${newMedibaseId.toLowerCase()}`;
+  const now = new Date();
+
+  const regPatient: StoredPatientRegistration = {
+    ...data,
+    id: patientId,
+    medibase_id: newMedibaseId,
+    allergies: Array.isArray(data.allergies) ? data.allergies : [],
+    chronic_conditions: Array.isArray(data.chronic_conditions) ? data.chronic_conditions : [],
+    created_at: now.toISOString(),
+  };
+
+  runtimeRegisteredPatients[newMedibaseId] = regPatient;
+  runtimeRegisteredPatients[patientId] = regPatient;
+
+  // 1. Build initial encounters list combining past history items + initial intake record
+  const initialEncounters: ClinicalEncounter[] = [];
+
+  // If patient has past medical history entries, convert each into a structured historical encounter!
+  if (Array.isArray(data.past_history) && data.past_history.length > 0) {
+    data.past_history.forEach((hist, idx) => {
+      initialEncounters.push({
+        id: `enc-past-${newMedibaseId.toLowerCase()}-${idx + 1}`,
+        patient_id: newMedibaseId,
+        date: hist.date || "Prior Medical History",
+        time: hist.time || "10:00 AM",
+        timestamp: new Date().toISOString(),
+        hospital_name: hist.hospital_name || "Prior Healthcare Provider",
+        department: hist.department || "General Medicine",
+        doctor_name: hist.doctor_name || "Attending Physician",
+        doctor_role: "Doctor",
+        visit_type: hist.visit_type || "Historical Consultation",
+        chief_complaint: hist.diagnosis ? `Past diagnosis: ${hist.diagnosis}` : "Past medical event",
+        diagnoses: hist.diagnosis ? [{ name: hist.diagnosis, is_primary: true }] : [],
+        prescriptions: hist.treatment
+          ? [
+              {
+                name: hist.treatment,
+                dosage: "As prescribed",
+                frequency: "Historical regimen",
+                is_active: false,
+              },
+            ]
+          : [],
+        vitals: {
+          bp: data.vitals.blood_pressure || "120/80 mmHg",
+          heart_rate: data.vitals.pulse || 72,
+          spo2: data.vitals.spo2 || 98,
+        },
+        investigations: [],
+        reports: [],
+        clinical_notes:
+          hist.notes ||
+          `Historical medical record documented during onboarding. Treatment: ${hist.treatment || "Standard care"}`,
+      });
+    });
+  }
+
+  // 2. Add current baseline health intake encounter at top
+  const formattedToday = now.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const formattedTime = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const baselineEnc: ClinicalEncounter = {
+    id: `enc-intake-${newMedibaseId.toLowerCase()}`,
+    patient_id: newMedibaseId,
+    date: formattedToday,
+    time: formattedTime,
+    timestamp: now.toISOString(),
+    hospital_name: "City General Hospital",
+    department: "Patient Onboarding & Intake",
+    doctor_name: "Dr. Rahul Sharma",
+    doctor_role: "Attending Physician",
+    visit_type: "Patient Registration & Baseline Intake",
+    chief_complaint: `New patient registration. Occupation: ${data.occupation || "N/A"}. Allergies: ${data.allergies && data.allergies.length > 0 ? data.allergies.join(", ") : "None reported"}.`,
+    diagnoses:
+      data.chronic_conditions && data.chronic_conditions.length > 0
+        ? data.chronic_conditions.map((c) => ({ name: c, is_primary: false }))
+        : [{ name: "Healthy Adult Baseline Examination", is_primary: true }],
+    prescriptions: [],
+    vitals: {
+      bp: data.vitals.blood_pressure || "120/80 mmHg",
+      heart_rate: data.vitals.pulse || 72,
+      spo2: data.vitals.spo2 || 98,
+    },
+    investigations: [
+      {
+        name: "Intake Vital Signs & Physical Metrics",
+        status: "Completed",
+        result: `Pulse: ${data.vitals.pulse} bpm, BP: ${data.vitals.blood_pressure}, Temp: ${data.vitals.temperature}, Ht: ${data.height_cm || "N/A"}, Wt: ${data.weight_kg || "N/A"}`,
+        time: formattedTime,
+      },
+    ],
+    reports: [],
+    clinical_notes: `Patient successfully onboarded into MediBase Network. Emergency Contact: ${data.emergency_contact.name} (${data.emergency_contact.relationship} - ${data.emergency_contact.phone}). Height: ${data.height_cm || "N/A"}, Weight: ${data.weight_kg || "N/A"}.`,
+  };
+
+  initialEncounters.unshift(baselineEnc);
+  runtimeEncounters[newMedibaseId] = initialEncounters;
+
+  // Auto-grant clinical access for demo staff so records are immediately viewable
+  runtimeAccessGrants.unshift({
+    id: `grant-auto-${Date.now()}`,
+    access_request_id: `req-auto-${Date.now()}`,
+    patient_id: newMedibaseId,
+    staff_id: "b0000000-0000-0000-0000-000000000001",
+    hospital_id: "a0000000-0000-0000-0000-000000000001",
+    doctor_name: "Dr. Rahul Sharma",
+    doctor_role: "Attending Physician",
+    hospital_name: "City General Hospital",
+    purpose: "Initial Onboarding & Medical Record Review",
+    granted_at: now.toISOString(),
+    valid_until: new Date(now.getTime() + 72 * 60 * 60 * 1000).toISOString(),
+    is_active: true,
+    access_scope: ["Medical History", "Prescriptions", "Diagnostic Reports"],
+  });
+
+  // Log audit event
+  recordAuditLog({
+    actor_name: data.full_name,
+    actor_role: "Patient",
+    hospital_name: "MediBase Universal Registry",
+    action: "patient_registered",
+    action_label: `New Patient Registered (${newMedibaseId})`,
+    purpose: "National Citizen Health Record Onboarding",
+    patient_id: newMedibaseId,
+    is_emergency: false,
+    access_type: "normal",
+  });
+
+  return regPatient;
+}
+
+export function findRegisteredPatient(query: string): StoredPatientRegistration | undefined {
+  if (!query) return undefined;
+  const clean = query.trim().toUpperCase();
+  if (runtimeRegisteredPatients[clean]) return runtimeRegisteredPatients[clean];
+
+  return Object.values(runtimeRegisteredPatients).find((p) => {
+    return (
+      p.medibase_id.toUpperCase() === clean ||
+      p.id === query ||
+      p.full_name.toLowerCase().includes(query.toLowerCase()) ||
+      p.phone_number.includes(query)
+    );
+  });
+}
+
+export function getAllRegisteredPatients(): StoredPatientRegistration[] {
+  const unique = new Map<string, StoredPatientRegistration>();
+  Object.values(runtimeRegisteredPatients).forEach((p) => {
+    unique.set(p.medibase_id, p);
+  });
+  return Array.from(unique.values());
 }

@@ -222,7 +222,22 @@ export async function POST(request: Request) {
     let patientRecord = null;
     let profileName: string | null = null;
 
-    if (targetMediBaseId && DEMO_PATIENTS_LOOKUP[targetMediBaseId]) {
+    const { findRegisteredPatient } = await import("@/lib/identity/access-requests-store");
+    const registered = targetMediBaseId ? findRegisteredPatient(targetMediBaseId) : undefined;
+
+    if (registered) {
+      patientRecord = {
+        id: registered.id,
+        profile_id: registered.id,
+        medibase_id: registered.medibase_id,
+        qr_code_token: `token-${registered.medibase_id.toLowerCase()}`,
+        date_of_birth: registered.date_of_birth,
+        gender: registered.gender,
+        blood_group: registered.blood_group,
+        occupation: registered.occupation,
+      };
+      profileName = registered.full_name;
+    } else if (targetMediBaseId && DEMO_PATIENTS_LOOKUP[targetMediBaseId]) {
       const demoPatient = DEMO_PATIENTS_LOOKUP[targetMediBaseId];
       patientRecord = {
         id: demoPatient.id,

@@ -119,32 +119,45 @@ export async function GET(
     let bloodGroup = "O+";
     const allergies = ["Penicillin (Anaphylaxis)"];
 
-    try {
-      const { data: dbPatient } = await supabase
-        .from("patients")
-        .select(`
-          id,
-          medibase_id,
-          date_of_birth,
-          blood_group,
-          profiles(full_name),
-          medical_profiles(past_medical_history, chief_complaint)
-        `)
-        .or(`id.eq.${targetPatientIdentifier},medibase_id.eq.${targetPatientIdentifier.toUpperCase()}`)
-        .maybeSingle();
+    const { findRegisteredPatient } = await import("@/lib/identity/access-requests-store");
+    const regPatient = findRegisteredPatient(targetPatientIdentifier);
 
-      if (dbPatient) {
-        targetPatientId = dbPatient.id;
-        medibaseId = dbPatient.medibase_id;
-        bloodGroup = dbPatient.blood_group || bloodGroup;
-        const profObj = Array.isArray(dbPatient.profiles) ? dbPatient.profiles[0] : dbPatient.profiles;
-        patientName = (profObj as { full_name?: string })?.full_name || patientName;
-        if (dbPatient.date_of_birth) {
-          patientAge = new Date().getFullYear() - new Date(dbPatient.date_of_birth).getFullYear();
-        }
+    if (regPatient) {
+      targetPatientId = regPatient.id;
+      medibaseId = regPatient.medibase_id;
+      patientName = regPatient.full_name;
+      bloodGroup = regPatient.blood_group || "O+";
+      if (regPatient.date_of_birth) {
+        patientAge = new Date().getFullYear() - new Date(regPatient.date_of_birth).getFullYear();
       }
-    } catch {
-      // Handled by default mapping
+    } else {
+      try {
+        const { data: dbPatient } = await supabase
+          .from("patients")
+          .select(`
+            id,
+            medibase_id,
+            date_of_birth,
+            blood_group,
+            profiles(full_name),
+            medical_profiles(past_medical_history, chief_complaint)
+          `)
+          .or(`id.eq.${targetPatientIdentifier},medibase_id.eq.${targetPatientIdentifier.toUpperCase()}`)
+          .maybeSingle();
+
+        if (dbPatient) {
+          targetPatientId = dbPatient.id;
+          medibaseId = dbPatient.medibase_id;
+          bloodGroup = dbPatient.blood_group || bloodGroup;
+          const profObj = Array.isArray(dbPatient.profiles) ? dbPatient.profiles[0] : dbPatient.profiles;
+          patientName = (profObj as { full_name?: string })?.full_name || patientName;
+          if (dbPatient.date_of_birth) {
+            patientAge = new Date().getFullYear() - new Date(dbPatient.date_of_birth).getFullYear();
+          }
+        }
+      } catch {
+        // Handled by default mapping
+      }
     }
 
     // 4. CRITICAL SECURITY CHECK: Active Access Grant Required
