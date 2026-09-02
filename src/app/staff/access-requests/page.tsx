@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { StaffShell } from "@/components/layout/staff-shell";
 import {
   Clock,
@@ -31,8 +32,11 @@ interface AccessRequestItem {
   is_active: boolean;
 }
 
-export default function StaffAccessRequestsPage() {
-  const [activeTab, setActiveTab] = useState<"pending" | "approved" | "denied" | "expired">("pending");
+function AccessRequestsContent() {
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get("tab") as "pending" | "approved" | "denied" | "expired") || "pending";
+
+  const [activeTab, setActiveTab] = useState<"pending" | "approved" | "denied" | "expired">(initialTab);
   const [requests, setRequests] = useState<AccessRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,6 +47,13 @@ export default function StaffAccessRequestsPage() {
         const data = await res.json();
         if (data.success && Array.isArray(data.requests)) {
           setRequests(data.requests);
+          const hasApproved = data.requests.some((r: AccessRequestItem) => r.status === "approved");
+          const hasPending = data.requests.some((r: AccessRequestItem) => r.status === "pending");
+          if (searchParams.get("tab") === "approved") {
+            setActiveTab("approved");
+          } else if (hasApproved && !hasPending && initialTab === "pending") {
+            setActiveTab("approved");
+          }
         }
       } catch (err) {
         console.error("Failed to load staff access requests:", err);
@@ -51,7 +62,7 @@ export default function StaffAccessRequestsPage() {
       }
     }
     loadRequests();
-  }, []);
+  }, [searchParams, initialTab]);
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
   const approvedCount = requests.filter((r) => r.status === "approved").length;
@@ -306,6 +317,23 @@ export default function StaffAccessRequestsPage() {
         </div>
       </div>
     </StaffShell>
+  );
+}
+
+export default function StaffAccessRequestsPage() {
+  return (
+    <Suspense
+      fallback={
+        <StaffShell activeNav="access-requests">
+          <div className="p-12 text-center bg-white border border-slate-200 rounded-xl space-y-2">
+            <RefreshCw className="w-6 h-6 animate-spin text-[#006699] mx-auto mb-2" />
+            <p className="text-xs text-slate-500 font-medium">Loading clinical access requests...</p>
+          </div>
+        </StaffShell>
+      }
+    >
+      <AccessRequestsContent />
+    </Suspense>
   );
 }
 

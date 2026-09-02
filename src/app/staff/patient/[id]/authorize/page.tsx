@@ -2,6 +2,7 @@
 
 import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { StaffShell } from "@/components/layout/staff-shell";
 import {
   ShieldAlert,
@@ -35,13 +36,31 @@ export default function PatientAuthorizePage({
 }) {
   const resolvedParams = use(params);
   const patientId = (resolvedParams.id || "MB-102394").toUpperCase();
+  const router = useRouter();
 
   const [staffProfile, setStaffProfile] = useState<UserProfile | null>(null);
   const [patient, setPatient] = useState<PatientIdentity | null>(null);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
-  const [requestStatus, setRequestStatus] = useState<"idle" | "sent" | "duplicate" | "error">("idle");
+  const [requestStatus, setRequestStatus] = useState<"idle" | "sent" | "duplicate" | "error" | "approved">("idle");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [autoRedirectSec, setAutoRedirectSec] = useState<number | null>(null);
+
+  // Check if clinical access is already granted
+  const checkAccessStatus = async () => {
+    try {
+      const res = await fetch(`/api/staff/patient/${patientId}/clinical-access`);
+      const data = await res.json();
+      if (data.authorized) {
+        setRequestStatus("approved");
+        setStatusMessage("Patient has approved access! You now have full authorization to view their medical history.");
+        return true;
+      }
+    } catch {
+      // Non-blocking
+    }
+    return false;
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -62,7 +81,6 @@ export default function PatientAuthorizePage({
         if (data.success && data.patient) {
           setPatient(data.patient);
         } else {
-          // Fallback baseline for demo patient
           setPatient({
             id: "10000000-0000-0000-0000-000000000001",
             medibase_id: patientId,
@@ -73,6 +91,9 @@ export default function PatientAuthorizePage({
             occupation: "Clinical Consultation",
           });
         }
+
+        // 3. Initial check if already approved
+        await checkAccessStatus();
       } catch (err) {
         console.error("Failed to load patient authorization details:", err);
       } finally {
@@ -81,6 +102,30 @@ export default function PatientAuthorizePage({
     }
     loadData();
   }, [patientId]);
+
+  // Live polling for patient approval when waiting
+  useEffect(() => {
+    if (requestStatus === "sent" || requestStatus === "duplicate") {
+      const pollInterval = setInterval(async () => {
+        const approved = await checkAccessStatus();
+        if (approved) {
+          clearInterval(pollInterval);
+        }
+      }, 2000);
+      return () => clearInterval(pollInterval);
+    }
+  }, [requestStatus, patientId]);
+
+  // Auto redirect countdown when approved
+  useEffect(() => {
+    if (requestStatus === "approved") {
+      setAutoRedirectSec(2);
+      const timer = setTimeout(() => {
+        router.push(`/staff/patient/${patientId}/timeline`);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [requestStatus, patientId, router]);
 
   const rawStaffName = staffProfile?.full_name || "Dr. Rahul Sharma";
   const formattedDoctorName = rawStaffName.startsWith("Dr.") ? rawStaffName : `Dr. ${rawStaffName}`;
@@ -144,26 +189,80 @@ export default function PatientAuthorizePage({
         </div>
 
         {/* Status Messages */}
-        {requestStatus === "sent" && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 text-xs text-emerald-800 shadow-sm">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-sm text-emerald-900 mb-0.5">Access Request Submitted</p>
-              <p className="leading-relaxed">{statusMessage}</p>
-              <p className="text-[11px] text-emerald-700 mt-1.5 font-medium">
-                The patient will see this notification in their MediBase mobile/web portal and can approve or deny access.
-              </p>
+        {requestStatus === "approved" && (
+          <div className="p-5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-emerald-900 shadow-md animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="font-bold text-base text-emerald-950">
+                  🎉 Patient Authorization Granted!
+                </p>
+                <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
+                  Patient <span className="font-bold">{patient?.full_name || patientId}</span> has approved your access request. Longitudinal medical history is now unlocked.
+                </p>
+                {autoRedirectSec !== null && (
+                  <p className="text-[11px] text-emerald-700 font-semibold mt-1">
+                    Opening medical timeline in {autoRedirectSec}s...
+                  </p>
+                )}
+              </div>
             </div>
+
+            <Link
+              href={`/staff/patient/${patientId}/timeline`}
+              className="px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 shrink-0"
+            >
+              <span>View Full Medical Timeline</span>
+              <span>➔</span>
+            </Link>
+          </div>
+        )}
+
+        {requestStatus === "sent" && (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start justify-between gap-3 text-xs text-emerald-800 shadow-sm">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm text-emerald-900 mb-0.5">Access Request Submitted & Awaiting Approval</p>
+                <p className="leading-relaxed">{statusMessage}</p>
+                <p className="text-[11px] text-emerald-700 mt-1.5 font-medium flex items-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Listening live for patient approval (will auto-open medical history when approved)...</span>
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={checkAccessStatus}
+              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
+            >
+              Check Approval Now
+            </button>
           </div>
         )}
 
         {requestStatus === "duplicate" && (
-          <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl flex items-start gap-3 text-xs text-sky-800 shadow-sm">
-            <CheckCircle2 className="w-5 h-5 text-[#006699] shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-sm text-sky-900 mb-0.5">Active Request Pending</p>
-              <p className="leading-relaxed">{statusMessage}</p>
+          <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl flex items-start justify-between gap-3 text-xs text-sky-800 shadow-sm">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-[#006699] shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm text-sky-900 mb-0.5">Active Request Pending Patient Approval</p>
+                <p className="leading-relaxed">{statusMessage}</p>
+                <p className="text-[11px] text-sky-700 mt-1.5 font-medium flex items-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Listening live for patient approval...</span>
+                </p>
+              </div>
             </div>
+
+            <button
+              onClick={checkAccessStatus}
+              className="px-3.5 py-1.5 bg-[#006699] hover:bg-[#005580] text-white font-semibold text-xs rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
+            >
+              Check Approval Now
+            </button>
           </div>
         )}
 

@@ -62,45 +62,16 @@ export async function GET(
       }
     }
 
-    // 3. Resolve Target Patient Record
-    let targetPatientId = targetPatientIdentifier;
-    let patientName = "Rahul Sharma";
-    let medibaseId = targetPatientIdentifier.toUpperCase();
-    let patientAge = 32;
-    let allergies = ["Penicillin (Anaphylaxis)", "Dust Mites"];
-
-    const { findRegisteredPatient, getPatientEncounters, checkClinicalAccess } = await import("@/lib/identity/access-requests-store");
-    const regPatient = findRegisteredPatient(targetPatientIdentifier);
-
-    if (regPatient) {
-      targetPatientId = regPatient.id;
-      medibaseId = regPatient.medibase_id;
-      patientName = regPatient.full_name;
-      allergies = regPatient.allergies && regPatient.allergies.length > 0 ? regPatient.allergies : ["None reported"];
-      if (regPatient.date_of_birth) {
-        patientAge = new Date().getFullYear() - new Date(regPatient.date_of_birth).getFullYear();
-      }
-    } else {
-      try {
-        const { data: dbPatient } = await supabase
-          .from("patients")
-          .select("id, medibase_id, date_of_birth, profiles(full_name)")
-          .or(`id.eq.${targetPatientIdentifier},medibase_id.eq.${targetPatientIdentifier.toUpperCase()}`)
-          .maybeSingle();
-
-        if (dbPatient) {
-          targetPatientId = dbPatient.id;
-          medibaseId = dbPatient.medibase_id;
-          const profileObj = Array.isArray(dbPatient.profiles) ? dbPatient.profiles[0] : dbPatient.profiles;
-          patientName = (profileObj as { full_name?: string })?.full_name || patientName;
-          if (dbPatient.date_of_birth) {
-            patientAge = new Date().getFullYear() - new Date(dbPatient.date_of_birth).getFullYear();
-          }
-        }
-      } catch {
-        // Handled by default mapping
-      }
-    }
+    // 3. Resolve Target Patient Profile
+    const { getPatientProfile, getPatientEncounters, checkClinicalAccess } = await import(
+      "@/lib/identity/access-requests-store"
+    );
+    const patientProfile = getPatientProfile(targetPatientIdentifier);
+    const targetPatientId = patientProfile.id;
+    const medibaseId = patientProfile.medibase_id;
+    const patientName = patientProfile.name;
+    const patientAge = patientProfile.age;
+    const allergies = patientProfile.allergies;
 
     // 4. CRITICAL SECURITY CHECK: Has Patient Granted Active Access?
     let isAuthorized = false;

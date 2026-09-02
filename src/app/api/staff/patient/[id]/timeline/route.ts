@@ -111,54 +111,18 @@ export async function GET(
       }
     }
 
-    // 3. Resolve Target Patient
-    let targetPatientId = targetPatientIdentifier;
-    let patientName = "Rahul Sharma";
-    let medibaseId = targetPatientIdentifier.toUpperCase();
-    let patientAge = 32;
-    let bloodGroup = "O+";
-    const allergies = ["Penicillin (Anaphylaxis)"];
-
-    const { findRegisteredPatient } = await import("@/lib/identity/access-requests-store");
-    const regPatient = findRegisteredPatient(targetPatientIdentifier);
-
-    if (regPatient) {
-      targetPatientId = regPatient.id;
-      medibaseId = regPatient.medibase_id;
-      patientName = regPatient.full_name;
-      bloodGroup = regPatient.blood_group || "O+";
-      if (regPatient.date_of_birth) {
-        patientAge = new Date().getFullYear() - new Date(regPatient.date_of_birth).getFullYear();
-      }
-    } else {
-      try {
-        const { data: dbPatient } = await supabase
-          .from("patients")
-          .select(`
-            id,
-            medibase_id,
-            date_of_birth,
-            blood_group,
-            profiles(full_name),
-            medical_profiles(past_medical_history, chief_complaint)
-          `)
-          .or(`id.eq.${targetPatientIdentifier},medibase_id.eq.${targetPatientIdentifier.toUpperCase()}`)
-          .maybeSingle();
-
-        if (dbPatient) {
-          targetPatientId = dbPatient.id;
-          medibaseId = dbPatient.medibase_id;
-          bloodGroup = dbPatient.blood_group || bloodGroup;
-          const profObj = Array.isArray(dbPatient.profiles) ? dbPatient.profiles[0] : dbPatient.profiles;
-          patientName = (profObj as { full_name?: string })?.full_name || patientName;
-          if (dbPatient.date_of_birth) {
-            patientAge = new Date().getFullYear() - new Date(dbPatient.date_of_birth).getFullYear();
-          }
-        }
-      } catch {
-        // Handled by default mapping
-      }
-    }
+    // 3. Resolve Target Patient Profile
+    const { getPatientProfile, checkClinicalAccess } = await import(
+      "@/lib/identity/access-requests-store"
+    );
+    const patientProfile = getPatientProfile(targetPatientIdentifier);
+    const targetPatientId = patientProfile.id;
+    const medibaseId = patientProfile.medibase_id;
+    const patientName = patientProfile.name;
+    const patientAge = patientProfile.age;
+    const bloodGroup = patientProfile.blood_group;
+    const gender = patientProfile.gender;
+    const allergies = patientProfile.allergies;
 
     // 4. CRITICAL SECURITY CHECK: Active Access Grant Required
     let isAuthorized = false;
