@@ -54,6 +54,12 @@ export async function POST(
       if (patient) {
         patientRecordId = patient.id;
       }
+    } else if (demoRole === "patient") {
+      const activePatientId = cookieStore.get("medibase_active_patient_id")?.value?.trim();
+      if (activePatientId) {
+        // We use the activePatientId (which is usually the MB-ID) and pass it along
+        patientRecordId = activePatientId;
+      }
     }
 
     // 3. Query Target Access Request
@@ -135,7 +141,12 @@ export async function POST(
     }
 
     // 5. Update Runtime In-Memory Store
-    const runtimeResult = approveAccessRequest(requestId, patientRecordId);
+    const dbFallbackInfo = targetRequest ? {
+      staff_id: targetRequest.requested_by_staff_id,
+      hospital_id: targetRequest.hospital_id,
+    } : undefined;
+
+    const runtimeResult = approveAccessRequest(requestId, patientRecordId, dbFallbackInfo);
     if (!runtimeResult.success && runtimeResult.error) {
       return NextResponse.json({ success: false, error: runtimeResult.error }, { status: 403 });
     }

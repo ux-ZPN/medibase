@@ -65,6 +65,11 @@ export async function GET() {
       if (patient) {
         patientId = patient.id;
       }
+    } else if (demoRole === "patient") {
+      const activePatientId = cookieStore.get("medibase_active_patient_id")?.value?.trim();
+      if (activePatientId) {
+        patientId = activePatientId;
+      }
     }
 
     // 3. Query Database for Access Requests

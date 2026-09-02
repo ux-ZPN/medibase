@@ -83,6 +83,7 @@ export async function GET(
         .from("access_grants")
         .select("id, is_active, valid_until")
         .eq("patient_id", targetPatientId)
+        .eq("staff_id", staffRecordId)
         .eq("is_active", true)
         .gt("valid_until", new Date().toISOString())
         .maybeSingle();

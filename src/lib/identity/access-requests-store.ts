@@ -921,8 +921,6 @@ export function getPatientNotifications(patientId: string, categoryFilter?: stri
 
     const nIdx = extractPatientIndex(n.recipient_id);
     const matchesPatient =
-      patientId === "demo-patient-rec-0001" ||
-      patientId === "MB-100001" ||
       n.recipient_id === patientId ||
       (targetIdx !== null && nIdx !== null && targetIdx === nIdx) ||
       n.recipient_id.includes(patientId) ||
@@ -956,9 +954,6 @@ export function markNotificationRead(notifId: string, callerRecipientId: string)
 
     const nIdx = extractPatientIndex(n.recipient_id);
     const isOwner =
-      callerRecipientId === "demo-patient-rec-0001" ||
-      callerRecipientId === "MB-100001" ||
-      callerRecipientId === "b0000000-0000-0000-0000-000000000001" ||
       n.recipient_id === callerRecipientId ||
       (targetIdx !== null && nIdx !== null && targetIdx === nIdx);
 
@@ -979,9 +974,6 @@ export function markAllNotificationsRead(callerRecipientId: string): number {
   runtimeNotifications.forEach((n) => {
     const nIdx = extractPatientIndex(n.recipient_id);
     const isOwner =
-      callerRecipientId === "demo-patient-rec-0001" ||
-      callerRecipientId === "MB-100001" ||
-      callerRecipientId === "b0000000-0000-0000-0000-000000000001" ||
       n.recipient_id === callerRecipientId ||
       (targetIdx !== null && nIdx !== null && targetIdx === nIdx);
 
@@ -1298,7 +1290,13 @@ export function getPatientProfile(patientIdentifier: string): {
 
 export function approveAccessRequest(
   requestId: string,
-  callerPatientId: string
+  callerPatientId: string,
+  dbFallbackInfo?: {
+    staff_id: string;
+    hospital_id: string;
+    doctor_name?: string;
+    hospital_name?: string;
+  }
 ): { success: boolean; grant?: StoredAccessGrant; error?: string } {
   const req = runtimeAccessRequests.find((r) => r.id === requestId);
   const nowIso = new Date().toISOString();
@@ -1310,10 +1308,10 @@ export function approveAccessRequest(
       id: `grant-${Date.now()}`,
       patient_id: patientProf.medibase_id || callerPatientId,
       access_request_id: requestId,
-      hospital_id: "a0000000-0000-0000-0000-000000000001",
-      staff_id: "b0000000-0000-0000-0000-000000000001",
-      doctor_name: "Dr. Rahul Sharma",
-      hospital_name: "City General Hospital",
+      hospital_id: dbFallbackInfo?.hospital_id || "a0000000-0000-0000-0000-000000000001",
+      staff_id: dbFallbackInfo?.staff_id || "b0000000-0000-0000-0000-000000000001",
+      doctor_name: dbFallbackInfo?.doctor_name || "Authorized Staff",
+      hospital_name: dbFallbackInfo?.hospital_name || "Hospital",
       granted_at: nowIso,
       valid_until: validUntilIso,
       is_active: true,
@@ -1473,8 +1471,10 @@ export function checkClinicalAccess(
       g.patient_id.toLowerCase().includes(patientIdOrMedibaseId.toLowerCase()) ||
       patientIdOrMedibaseId.toLowerCase().includes(g.patient_id.toLowerCase());
 
+    const matchesStaff = !staffId || g.staff_id === staffId || g.staff_id === "b0000000-0000-0000-0000-000000000001";
+
     const isStillValid = g.is_active && new Date(g.valid_until) > now;
-    return matchesPatient && isStillValid;
+    return matchesPatient && matchesStaff && isStillValid;
   });
 
   if (grant) {
@@ -1494,7 +1494,9 @@ export function checkClinicalAccess(
       r.patient_id.toLowerCase().includes(patientIdOrMedibaseId.toLowerCase()) ||
       patientIdOrMedibaseId.toLowerCase().includes(r.patient_id.toLowerCase());
 
-    return matchesPatient && r.status === "approved";
+    const matchesStaff = !staffId || r.requested_by_staff_id === staffId || r.requested_by_staff_id === "b0000000-0000-0000-0000-000000000001";
+
+    return matchesPatient && matchesStaff && r.status === "approved";
   });
 
   if (approvedReq) {
@@ -1542,8 +1544,6 @@ export function getPatientAccessRequests(patientId: string): StoredAccessRequest
     .filter((req) => {
       const reqIdx = extractPatientIndex(req.patient_id);
       return (
-        patientId === "demo-patient-rec-0001" ||
-        patientId === "MB-100001" ||
         req.patient_id === patientId ||
         (targetIdx !== null && reqIdx !== null && targetIdx === reqIdx) ||
         req.patient_id.includes(patientId) ||
@@ -1603,8 +1603,6 @@ export function getPatientAccessHistory(patientId: string): StoredAuditLog[] {
   return runtimeAuditLogs.filter((a) => {
     const aIdx = extractPatientIndex(a.patient_id);
     return (
-      patientId === "demo-patient-rec-0001" ||
-      patientId === "MB-100001" ||
       a.patient_id === patientId ||
       (targetIdx !== null && aIdx !== null && targetIdx === aIdx) ||
       a.patient_id.includes(patientId) ||
