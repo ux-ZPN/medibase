@@ -139,14 +139,24 @@ interface DbEmergencyContactRow {
   phone_number?: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const context = searchParams.get("context");
+    
     const cookieStore = await cookies();
-    const demoRole = cookieStore.get("medibase_demo_role")?.value;
-    const activePatientId = cookieStore.get("medibase_active_patient_id")?.value?.trim()?.toUpperCase();
+    let demoRole = cookieStore.get("medibase_demo_role")?.value;
+    
+    // Override demoRole if a specific context was requested from the client
+    if (context === "staff") {
+      demoRole = "hospital_staff";
+    } else if (context === "patient") {
+      demoRole = "patient";
+    }
 
     // 1. If Patient Role Session
     if (demoRole === "patient") {
+      const activePatientId = cookieStore.get("medibase_active_patient_id")?.value?.trim()?.toUpperCase();
       const patientId = activePatientId || "MB-100001";
 
       // 1a. Check Runtime Registered Patients Store

@@ -119,11 +119,7 @@ export default function PatientAuthorizePage({
   // Auto redirect countdown when approved
   useEffect(() => {
     if (requestStatus === "approved") {
-      setAutoRedirectSec(2);
-      const timer = setTimeout(() => {
-        router.push(`/staff/patient/${patientId}/timeline`);
-      }, 2000);
-      return () => clearTimeout(timer);
+      router.push(`/staff/patient/${patientId}/timeline`);
     }
   }, [requestStatus, patientId, router]);
 

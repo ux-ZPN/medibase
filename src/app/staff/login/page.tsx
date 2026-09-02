@@ -510,13 +510,34 @@ function StaffLoginForm() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Clinical Department
                 </label>
-                <input
-                  type="text"
+                <select
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
-                  placeholder="Cardiology / General Medicine"
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006699]"
-                />
+                >
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Dermatology">Dermatology</option>
+                  <option value="Cosmetology">Cosmetology</option>
+                  <option value="Gastroenterology">Gastroenterology</option>
+                  <option value="Urology">Urology</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="General Physician">General Physician</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Oncology">Oncology</option>
+                  <option value="Gynecology">Gynecology</option>
+                  <option value="Psychiatry">Psychiatry</option>
+                  <option value="Endocrinology">Endocrinology</option>
+                  <option value="Ophthalmology">Ophthalmology</option>
+                  <option value="ENT (Otolaryngology)">ENT (Otolaryngology)</option>
+                  <option value="Pulmonology">Pulmonology</option>
+                  <option value="Rheumatology">Rheumatology</option>
+                  <option value="Radiology">Radiology</option>
+                  <option value="Anesthesiology">Anesthesiology</option>
+                  <option value="Pathology">Pathology</option>
+                  <option value="Emergency Medicine">Emergency Medicine</option>
+                  <option value="General Surgery">General Surgery</option>
+                </select>
               </div>
             </div>
 

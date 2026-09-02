@@ -4,6 +4,7 @@ import {
   findPendingAccessRequest,
   addAccessRequest,
   getStaffAccessRequests,
+  findRegisteredStaff,
 } from "@/lib/identity/access-requests-store";
 
 export async function GET() {
@@ -82,6 +83,16 @@ export async function POST(request: Request) {
         hospitalRecordId = user.user_metadata?.hospital_id || hospitalRecordId;
         hospitalName = user.user_metadata?.hospital_name || hospitalName;
         providerName = user.user_metadata?.full_name || providerName;
+      }
+    } else if (demoRole === "hospital_staff") {
+      const activeStaffId = cookieStore.get("medibase_active_staff_id")?.value?.trim();
+      const staffRecord = activeStaffId ? findRegisteredStaff(activeStaffId) : null;
+      if (staffRecord) {
+        staffRecordId = staffRecord.id;
+        hospitalRecordId = staffRecord.hospital_id;
+        providerName = staffRecord.full_name;
+        hospitalName = staffRecord.hospital_name;
+        departmentName = staffRecord.department;
       }
     }
 

@@ -190,7 +190,9 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   // 1. If running in the browser, always fetch the active profile from the server endpoint
   if (typeof window !== "undefined") {
     try {
-      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      const isStaffApp = window.location.pathname.startsWith("/staff");
+      const url = `/api/auth/me?context=${isStaffApp ? "staff" : "patient"}`;
+      const res = await fetch(url, { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.profile) {
