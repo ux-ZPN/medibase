@@ -216,21 +216,45 @@ function PatientLoginForm() {
     setSuccessMessage("Verification successful. Redirecting to your patient portal...");
 
     try {
-      const onboardResponse = await fetch("/api/auth/complete-patient-onboarding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
+      if (authMode === "register") {
+        const regRes = await fetch("/api/patient/register-full", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: fullName.trim() || "New Patient",
+            phoneNumber: phoneNumber.trim() || "+91 98765 00000",
+            email: activeEmail,
+            occupation: "General Citizen",
+            dateOfBirth: "1995-01-01",
+            gender: "Not Specified",
+            bloodGroup: "O+",
+            allergies: [],
+            emergencyContactName: "Family Member",
+            emergencyContactRelationship: "Primary",
+            emergencyContactPhone: phoneNumber.trim() || "+91 98765 00000",
+            pulse: 74,
+            bloodPressure: "120/80",
+            temperature: "98.6 °F",
+            spo2: 99,
+          }),
+        });
 
-      const onboardData = await onboardResponse.json();
-
-      if (!onboardResponse.ok || !onboardData.success) {
-        setErrorMessage(onboardData.error || "Failed to initialize MediBase ID. Please retry.");
-        setLoading(false);
-        return;
+        const regData = await regRes.json();
+        if (!regRes.ok || !regData.success) {
+          throw new Error(regData.error || "Failed to initialize MediBase ID. Please retry.");
+        }
+      } else {
+        // Sign-in mode
+        await fetch("/api/auth/demo-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "patient" }),
+        });
       }
 
-      router.push(redirectUrl);
-      router.refresh();
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 300);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "An unexpected verification error occurred.";
       setErrorMessage(msg);
